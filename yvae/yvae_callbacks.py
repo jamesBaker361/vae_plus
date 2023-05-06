@@ -65,9 +65,9 @@ class YvaeSavingCallback:
 
     def __call__(self, epoch):
         if epoch % self.interval ==0 and epoch>=self.threshold:
-            tf.saved_model.save(self.yvae_trainer.encoder,self.save_model_folder+"encoder")
+            self.yvae_trainer.encoder.save(self.save_model_folder+"encoder")
             for x in range(len(self.yvae_trainer.decoders)):
-                tf.saved_model.save(self.yvae_trainer.decoders[x],self.save_model_folder+"decoder_{}".format(x))
+                self.yvae_trainer.decoders[x].save(self.save_model_folder+"decoder_{}".format(x))
             print('saved at location {} epoch {}'.format(self.save_model_folder, epoch))
             meta_data = {"epoch":epoch}
             json_object = json.dumps(meta_data, indent=4)

@@ -16,7 +16,7 @@ parser.add_argument("--epochs",type=int,help="training epochs", default=2)
 parser.add_argument("--test",type=bool, default=False)
 parser.add_argument("--batch_size", type=int,default=1) 
 parser.add_argument("--save_img_parent",type=str,default="/home/jlb638/Desktop/vae_plus/gen_imgs/yvae/")
-parser.add_argument("--name",type=str,default="cycle_{}".format(str(datetime.now(timezone.utc))))
+parser.add_argument("--name",type=str,default="yvae_{}".format(str(datetime.now(timezone.utc))))
 parser.add_argument("--save_model_parent", type=str,default="../../../../../scratch/jlb638/yvae_models/yvae/")
 parser.add_argument("--dataset_names",nargs="+",default=["jlbaker361/flickr_humans_10k", "jlbaker361/anime_faces_10k","jlbaker361/ar_rom_bar_ren" ])
 parser.add_argument("--load", type=bool, default=False, help="whether to load previous model if possible")
@@ -27,6 +27,10 @@ parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for 
 parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for encoding')
 
 args = parser.parse_args()
+
+from tensorflow.python.framework.ops import disable_eager_execution
+
+#disable_eager_execution()
 
 def objective(trial,args):
     save_folder=args.save_img_parent+args.name+"/"
@@ -41,9 +45,9 @@ def objective(trial,args):
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
     if args.load:
-        encoder=tf.saved_model.load(save_model_folder+"encoder")
-        decoders=[tf.saved_model.load(save_model_folder+"decoder_{}".format(d)) for d in range(n_decoders)]
-        inputs = Input(shape=input_shape, name='encoder_input')
+        encoder=keras.models.load_model(save_model_folder+"encoder")
+        decoders=[keras.models.load_model(save_model_folder+"decoder_{}".format(d)) for d in range(n_decoders)]
+        inputs = encoder.inputs
         [z_mean, z_log_var, latents]=encoder(inputs)
         y_vae_list = [Model(inputs, [d(latents),z_mean, z_log_var]) for d in decoders]
 
@@ -58,7 +62,7 @@ def objective(trial,args):
     dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim)
     test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim)
     optimizer=keras.optimizers.legacy.Adam(learning_rate=0.0001)
-    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,optimizer)
+    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,optimizer,start_epoch=start_epoch)
     callbacks=[
         YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3)
     ]

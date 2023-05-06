@@ -28,6 +28,8 @@ parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for 
 
 args = parser.parse_args()
 
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+
 def objective(trial,args):
     save_folder=args.save_img_parent+args.name
     save_model_folder=args.save_model_parent+args.name
@@ -38,23 +40,25 @@ def objective(trial,args):
     OUTPUT_CHANNELS = 3
     start_epoch=0
 
-    if args.load:
-        generator_g=tf.saved_model.load(save_model_folder+"generator_g")
-        generator_f=tf.saved_model.load(save_model_folder+"generator_f")
-        discriminator_x=tf.saved_model.load(save_model_folder+"discriminator_x")
-        discriminator_y=tf.saved_model.load(save_model_folder+"discriminator_y")
-        with open(save_model_folder+"/meta_data.json","r") as src_file:
-            start_epoch=json.load(src_file)["epoch"]
+    mirrored_strategy = tf.distribute.MirroredStrategy()
+    with mirrored_strategy.scope():
+        if args.load:
+            generator_g=tf.saved_model.load(save_model_folder+"generator_g")
+            generator_f=tf.saved_model.load(save_model_folder+"generator_f")
+            discriminator_x=tf.saved_model.load(save_model_folder+"discriminator_x")
+            discriminator_y=tf.saved_model.load(save_model_folder+"discriminator_y")
+            with open(save_model_folder+"/meta_data.json","r") as src_file:
+                start_epoch=json.load(src_file)["epoch"]
 
-        print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch))
-    else:
-        generator_g, generator_f, discriminator_x, discriminator_y= get_models(OUTPUT_CHANNELS, args.image_dim, 'instancenorm', False)
+            print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch))
+        else:
+            generator_g, generator_f, discriminator_x, discriminator_y= get_models(OUTPUT_CHANNELS, args.image_dim, 'instancenorm', False)
 
-    generator_g_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
-    generator_f_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
+        generator_g_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
+        generator_f_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 
-    discriminator_x_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
-    discriminator_y_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
+        discriminator_x_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
+        discriminator_y_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 
     @tf.function
     def train_step(real_x, real_y):
@@ -125,7 +129,7 @@ def objective(trial,args):
                                                     discriminator_y.trainable_variables))
     #end train step
     
-    train_style, train_content = cycle_get_datasets_train(batch_size=args.batch_size,unit_test=args.test,content_path=args.content_path,style_path=args.style_path, image_dim=args.image_dim)
+    train_style, train_content = cycle_get_datasets_train(batch_size=args.batch_size,unit_test=args.test,content_path=args.content_path,style_path=args.style_path, image_dim=args.image_dim,mirrored_strategy=None)
     print('train_style', train_style)
     print('train_content', train_style)
     #x = style
@@ -135,6 +139,9 @@ def objective(trial,args):
     train_style_sample=next(iter(train_style))
     style_list=[t for t in train_style][1:]
     print('train_style_sample', train_style_sample.shape)
+
+    zipped_dataset=tf.data.Dataset.zip((train_style, train_content))
+    zipped_dataset=mirrored_strategy.experimental_distribute_dataset(zipped_dataset)
 
     print("begin training")
     for epoch in range(start_epoch,args.epochs):

@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 
 class YVAE_Trainer():
-    def __init__(self,y_vae_list,epochs,dataset_dict,optimizer,callbacks=[]):
+    def __init__(self,y_vae_list,epochs,dataset_dict,optimizer,callbacks=[],start_epoch=0):
         assert len(y_vae_list)==len(dataset_dict)
         self.y_vae_list=y_vae_list
         self.epochs=epochs
@@ -13,8 +13,9 @@ class YVAE_Trainer():
         self.callbacks=callbacks
         self.decoders=[self.y_vae_list[i].get_layer('decoder_{}'.format(i)) for i in range(len(y_vae_list))]
         self.encoder=self.y_vae_list[0].get_layer('encoder')
+        self.start_epoch=start_epoch
 
-  #@tf.function
+    @tf.function
     def train_step(self,batch,vae):
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)
@@ -31,7 +32,7 @@ class YVAE_Trainer():
         return total_loss
 
     def train_loop(self):
-        for e in range(self.epochs):
+        for e in range(self.start_epoch,self.epochs):
             epoch_losses=[0 for _ in self.dataset_list]
             for d,dataset in enumerate(self.dataset_list):
                 vae=self.y_vae_list[d]
