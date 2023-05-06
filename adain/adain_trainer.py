@@ -1,21 +1,20 @@
-from model import *
+from adain_model import *
+import numpy as np
+import time
 
-class AdaInTrainer(tf.keras.Model):
-    def __init__(self, encoder, decoder, loss_net, style_weight, custom_callbacks, **kwargs):
-        super().__init__(**kwargs)
+class AdaInTrainer():
+    def __init__(self, encoder, decoder, loss_net, style_weight, optimizer, loss_fn ,callbacks,epochs,train_dataset,save_model_path):
         self.encoder = encoder
         self.decoder = decoder
         self.loss_net = loss_net
         self.style_weight = style_weight
-        self.custom_callbacks=custom_callbacks
-
-    def compile(self, optimizer, loss_fn):
-        super().compile()
         self.optimizer = optimizer
         self.loss_fn = loss_fn
-        self.style_loss_tracker = keras.metrics.Mean(name="style_loss")
-        self.content_loss_tracker = keras.metrics.Mean(name="content_loss")
-        self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
+        self.callbacks=callbacks
+        self.epochs=epochs
+        self.train_dataset=train_dataset
+        self.save_model_path=save_model_path
+
 
     def train_step(self, inputs):
         style, content = inputs
@@ -53,14 +52,34 @@ class AdaInTrainer(tf.keras.Model):
         gradients = tape.gradient(total_loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
-        # Update the trackers.
-        self.style_loss_tracker.update_state(loss_style)
-        self.content_loss_tracker.update_state(loss_content)
-        self.total_loss_tracker.update_state(total_loss)
         return {
-            "style_loss": self.style_loss_tracker.result(),
-            "content_loss": self.content_loss_tracker.result(),
-            "total_loss": self.total_loss_tracker.result(),
+            "style_loss": loss_style,
+            "content_loss": loss_content,
+            "total_loss": total_loss,
+        }
+
+    def train_loop(self):
+        for e in range(self.epochs):
+            losses={
+            "style_loss": [],
+            "content_loss": [],
+            "total_loss": []
+            }
+            start=time.time()
+            for batch in self.train_dataset:
+                result=self.train_step(batch)
+                for k,v in result.items():
+                    losses[k].append(v)
+            end=time.time()
+            print("epoch {} elpased {}".format(e, end-start))
+            for name,val in losses.items():
+                print('\t{} sum: {} mean: {} std: {}'.format(name, np.sum(val), np.mean(val), np.std(val)))
+            for callback in self.callbacks:
+                callback(self,e)
+        return {
+            "style_loss": np.mean(losses["style_loss"]),
+            "content_loss": np.mean(losses["content_loss"]),
+            "total_loss": np.mean(losses["total_loss"])
         }
 
     def test_step(self, inputs):
@@ -93,20 +112,11 @@ class AdaInTrainer(tf.keras.Model):
         loss_style = self.style_weight * loss_style
         total_loss = loss_content + loss_style
 
-        # Update the trackers.
-        self.style_loss_tracker.update_state(loss_style)
-        self.content_loss_tracker.update_state(loss_content)
-        self.total_loss_tracker.update_state(total_loss)
         return {
-            "style_loss": self.style_loss_tracker.result(),
-            "content_loss": self.content_loss_tracker.result(),
-            "total_loss": self.total_loss_tracker.result(),
+            "style_loss": loss_style,
+            "content_loss": loss_content,
+            "total_loss": total_loss,
         }
-
-    @property
-    def metrics(self):
-        return [
-            self.style_loss_tracker,
-            self.content_loss_tracker,
-            self.total_loss_tracker,
-        ]
+    
+    def save_decoder(self):
+        tf.saved_model.save(self.decoder, self.save_model_path+"adain_decoder")
