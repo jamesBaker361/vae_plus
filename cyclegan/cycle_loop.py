@@ -28,9 +28,9 @@ parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for 
 
 args = parser.parse_args()
 
-print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
-
 def objective(trial,args):
+    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print("tf.test.is_gpu_available() =", tf.test.is_gpu_available())
     save_folder=args.save_img_parent+args.name
     save_model_folder=args.save_model_parent+args.name
     os.makedirs(save_folder, exist_ok=True)

@@ -5,6 +5,7 @@ import numpy as np
 import sys
 sys.path.append("data_utils")
 import tensorflow as tf
+import json
 
 from processing_utils import *
 
@@ -64,8 +65,19 @@ class AdainImageGenerationCallback:
         plt.close('all')
 
 class AdainModelSaveCallback:
-    def __init__(self, adain_trainer):
+    def __init__(self, adain_trainer,threshold,interval, save_model_folder):
         self.adain_trainer=adain_trainer
+        self.threshold=threshold
+        self.interval=interval
+        self.save_model_folder=save_model_folder
 
     def __call__(self,epoch):
-        self.adain_trainer.save_decoder()
+        if epoch % self.interval ==0 and epoch>=self.threshold:
+            tf.saved_model.save(self.adain_trainer.decoder, self.save_model_folder+"adain_decoder")
+            print('saved at location {} epoch {}'.format(self.save_model_folder, epoch))
+            meta_data = {"epoch":epoch}
+            json_object = json.dumps(meta_data, indent=4)
+
+            # Writing to sample.json
+            with open(self.save_model_folder+"meta_data.json", "w+") as outfile:
+                outfile.write(json_object)

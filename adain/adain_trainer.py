@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 class AdaInTrainer():
-    def __init__(self, encoder, decoder, loss_net, style_weight, optimizer, loss_fn ,callbacks,epochs,train_dataset,save_model_path):
+    def __init__(self, encoder, decoder, loss_net, style_weight, optimizer, loss_fn ,callbacks,epochs,train_dataset,save_model_path,start_epoch=0):
         self.encoder = encoder
         self.decoder = decoder
         self.loss_net = loss_net
@@ -14,8 +14,10 @@ class AdaInTrainer():
         self.epochs=epochs
         self.train_dataset=train_dataset
         self.save_model_path=save_model_path
+        self.start_epoch=start_epoch
 
 
+    @tf.function
     def train_step(self, inputs):
         style, content = inputs
 
@@ -59,7 +61,7 @@ class AdaInTrainer():
         }
 
     def train_loop(self):
-        for e in range(self.epochs):
+        for e in range(self.start_epoch,self.epochs):
             losses={
             "style_loss": [],
             "content_loss": [],
@@ -75,7 +77,7 @@ class AdaInTrainer():
             for name,val in losses.items():
                 print('\t{} sum: {} mean: {} std: {}'.format(name, np.sum(val), np.mean(val), np.std(val)))
             for callback in self.callbacks:
-                callback(self,e)
+                callback(e)
         return {
             "style_loss": np.mean(losses["style_loss"]),
             "content_loss": np.mean(losses["content_loss"]),

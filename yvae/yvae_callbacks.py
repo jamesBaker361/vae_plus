@@ -68,7 +68,7 @@ class YvaeSavingCallback:
             self.yvae_trainer.encoder.save(self.save_model_folder+"encoder")
             for x in range(len(self.yvae_trainer.decoders)):
                 self.yvae_trainer.decoders[x].save(self.save_model_folder+"decoder_{}".format(x))
-            print('saved at location {} epoch {}'.format(self.save_model_folder, epoch))
+            print('saved at location {} epoch {}'.format(self.save_model_folder, epoch),flush=True)
             meta_data = {"epoch":epoch}
             json_object = json.dumps(meta_data, indent=4)
  

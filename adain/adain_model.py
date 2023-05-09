@@ -65,7 +65,7 @@ def get_decoder(load_path=None):
                 kernel_size=3,
                 strides=1,
                 padding="same",
-                activation="sigmoid",
+                activation="tanh",
             ),
         ]
     )

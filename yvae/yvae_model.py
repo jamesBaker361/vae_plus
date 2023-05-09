@@ -100,7 +100,7 @@ def get_decoder(latent_dim, image_dim,n=0):
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
         x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
         x = BatchNormalization()(x)
-    decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
+    decoder1_outputs = Conv2D(3, (3, 3), activation='tanh', padding='same')(x)
     return Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
 
 def get_y_vae_list(latent_dim, input_shape, n_decoders):
@@ -113,5 +113,7 @@ def get_y_vae_list(latent_dim, input_shape, n_decoders):
     [z_mean, z_log_var, latents]=encoder(inputs)
     outputs=[d(latents) for d in decoders]+[z_mean, z_log_var]
     y_vae_list = [Model(inputs, [d(latents),z_mean, z_log_var]) for d in decoders]
+    for vae in y_vae_list:
+        vae.build(input_shape)
     return y_vae_list
 

@@ -42,7 +42,7 @@ def AdainSavingCallback_test(image_dim=64):
     adain_trainer=AdaInTrainer(encoder, decoder, loss_net, style_weight, optimizer, loss_fn ,callbacks,epochs,train_dataset,save_model_path)
     test_dataset=adain_get_dataset_test(batch_size=8,image_dim=image_dim)
     image_output_dir= 'exploration/'
-    callback=AdainModelSaveCallback(adain_trainer)
+    callback=AdainModelSaveCallback(adain_trainer,1,1, save_model_path)
     callback(0)
     decoder= tf.saved_model.load(save_model_path+"adain_decoder")
 
