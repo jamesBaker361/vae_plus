@@ -1,4 +1,5 @@
 
+from typing import Any
 import tensorflow as tf
 import numpy as np
 from datasets import load_dataset
@@ -60,6 +61,52 @@ def equal_length(smaller, bigger):
         for i in range(len(bigger)):
             new_smaller.append(smaller[i%len(smaller)])
     return new_smaller, bigger
+
+class OneHotEncoder:
+    def __init__(self,path_list):
+        self.path_list=path_list
+
+    def __call__(self, path):
+        index=self.path_list.index(path)
+        ret=[0 for _ in self.path_list]
+        ret[index]=1
+        return tf.cast(ret, tf.float32)
+
+def get_labeled_datasets_train(path_list,image_dim, preprocess=False,method=tf.image.ResizeMethod.GAUSSIAN):
+    labels=[]
+    images=[]
+    onehot=OneHotEncoder(path_list)
+    for path in path_list:
+        path_images=[np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='train']
+        path_labels=[onehot(path) for _ in path_images]
+        images+=path_images
+        labels+=path_labels
+    if preprocess:
+        preprocess_image_train=get_reprocess_image_train(image_dim,method)
+        image_dataset = tf.data.Dataset.from_tensor_slices(images).map(
+        preprocess_image_train, num_parallel_calls=AUTOTUNE)
+    else:
+        normalize=get_normalize(image_dim,method)
+        image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
+        normalize, num_parallel_calls=AUTOTUNE)
+    label_dataset=tf.data.Dataset.from_tensor_slices(labels)
+    return tf.data.Dataset.zip((image_dataset, label_dataset))
+
+def get_labeled_datasets_test(path_list,image_dim, method=tf.image.ResizeMethod.GAUSSIAN):
+    labels=[]
+    images=[]
+    onehot=OneHotEncoder(path_list)
+    for path in path_list:
+        path_images=[np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='test']
+        path_labels=[onehot(path) for _ in path_images]
+        images+=path_images
+        labels+=path_labels
+    normalize=get_normalize(image_dim,method)
+    image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
+    normalize, num_parallel_calls=AUTOTUNE)
+    label_dataset=tf.data.Dataset.from_tensor_slices(labels)
+    return tf.data.Dataset.zip((image_dataset, label_dataset))
+
 
 def get_single_dataset_train(unit_test,path,image_dim, preprocess=False,method=tf.image.ResizeMethod.GAUSSIAN):
     if unit_test:

@@ -18,6 +18,10 @@ def equal_length_switched_test():
     assert len(bigger) == len(smaller)
     assert big_length ==len(smaller)
 
+def get_labeled_datasets_train_test():
+    path_names=["jlbaker361/flickr_humans_mini", "jlbaker361/anime_faces_mini"]
+    
+
 if __name__=='__main__':
     equal_length_test()
     equal_length_switched_test()

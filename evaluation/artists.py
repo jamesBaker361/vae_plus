@@ -1,6 +1,7 @@
 import tensorflow as tf
 from PIL import Image
 import numpy as np
+import os
 
 import sys
 sys.path.append("cyclegan")
@@ -13,6 +14,7 @@ class CycleGANArtist:
         self.generator_f=tf.saved_model.load(save_model_folder+"generator_f")
         self.limit = limit
         self.output_img_dir=output_img_dir
+        os.makedirs(output_img_dir, exist_ok=True)
         self.content_dataset=content_dataset
 
     def __call__(self):
@@ -33,11 +35,10 @@ class YVaeArtist: #one of these for each yvae in yvae list
             [self.encoder, self.decoder]
         )
         self.limit=limit
-        self.output_img_dir
+        self.output_img_dir=output_img_dir
+        os.makedirs(output_img_dir, exist_ok=True)
 
     def __call__(self):
-        # Generator G translates X -> Y
-        # Generator F translates Y -> X.
         # x = style
         # y = content
         for count,content_img in enumerate( self.content_dataset):
