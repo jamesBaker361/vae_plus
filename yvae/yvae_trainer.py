@@ -3,31 +3,19 @@ import numpy as np
 import tensorflow as tf
 import time
 
-class YVAE_Trainer():
-    def __init__(self,y_vae_list,epochs,dataset_dict,optimizer,reconstruction_loss_function_name,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
-        assert len(y_vae_list)==len(dataset_dict)
-        self.y_vae_list=y_vae_list
+
+class VAE_Trainer:
+    def __init__(self,vae_list,epochs,dataset_dict,optimizer,kl_loss_scale,callbacks,start_epoch):
+        self.vae_list=vae_list
         self.epochs=epochs
         self.dataset_names=[k for k in dataset_dict.keys()]
         self.dataset_list=[v for v in dataset_dict.values()]
         self.optimizer=optimizer
         self.callbacks=callbacks
-        self.decoders=[self.y_vae_list[i].get_layer('decoder_{}'.format(i)) for i in range(len(y_vae_list))]
-        self.encoder=self.y_vae_list[0].get_layer('encoder')
         self.start_epoch=start_epoch
         self.kl_loss_scale=kl_loss_scale
-        if reconstruction_loss_function_name == 'binary_crossentropy':
-            self.reconstruction_loss_function=tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.SUM)
-        elif reconstruction_loss_function_name == 'mse':
-            self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM)
-        elif reconstruction_loss_function_name == 'log_cosh':
-            self.reconstruction_loss_function=tf.keras.losses.LogCosh(reduction=tf.keras.losses.Reduction.SUM)
-        elif reconstruction_loss_function_name == 'huber':
-            self.reconstruction_loss_function=tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.SUM)
+        self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM)
 
-        #self.optimizer_list=[keras.optimizers.legacy.Adam(learning_rate=0.0001) for _ in dataset_dict.keys()]
-
-    #@tf.function
     def train_step(self,batch,vae):
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)
@@ -40,13 +28,11 @@ class YVAE_Trainer():
         return total_loss
 
     def train_loop(self):
-        #train_steps=[tf.function(self.train_step_concrete).get_concrete_function(batch,vae,optimizer) for optimizer in self.optimizer_list]
         for e in range(self.start_epoch,self.epochs):
             start = time.time()
             epoch_losses=[0 for _ in self.dataset_list]
             for d,dataset in enumerate(self.dataset_list):
-                vae=self.y_vae_list[d]
-                #optimizer=self.optimizer_list[d]
+                vae=self.vae_list[d]
                 for batch in dataset:
                     total_loss=self.train_step(batch,vae)
                     epoch_losses[d]+=total_loss
@@ -56,6 +42,20 @@ class YVAE_Trainer():
             for callback in self.callbacks:
                 callback(e)
         return np.mean(epoch_losses)
+
+class YVAE_Trainer(VAE_Trainer):
+    def __init__(self,y_vae_list,epochs,dataset_dict,optimizer,reconstruction_loss_function_name,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
+        super().__init__(y_vae_list,epochs,dataset_dict,optimizer,kl_loss_scale,callbacks,start_epoch)
+        self.decoders=[y_vae_list[i].get_layer('decoder_{}'.format(i)) for i in range(len(y_vae_list))]
+        self.encoder=y_vae_list[0].get_layer('encoder')
+        if reconstruction_loss_function_name == 'binary_crossentropy':
+            self.reconstruction_loss_function=tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.SUM)
+        elif reconstruction_loss_function_name == 'mse':
+            self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM)
+        elif reconstruction_loss_function_name == 'log_cosh':
+            self.reconstruction_loss_function=tf.keras.losses.LogCosh(reduction=tf.keras.losses.Reduction.SUM)
+        elif reconstruction_loss_function_name == 'huber':
+            self.reconstruction_loss_function=tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.SUM)
     
     def generate_images(self,batch_size):
         noise_shape=self.decoders[0].input_shape[1:]

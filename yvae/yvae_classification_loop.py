@@ -1,8 +1,10 @@
 import tensorflow as tf
+#from tensorflow_examples.models.pix2pix import pix2pix
 from yvae_data_helper import *
 from yvae_model import *
 from yvae_trainer import *
 from yvae_callbacks import *
+from yvae_classification_trainer import *
 import argparse
 from datetime import datetime, timezone
 import os
@@ -23,23 +25,17 @@ parser.add_argument("--image_dim",type=int, default=128)
 parser.add_argument("--interval",type=int,default=10,help='save model every interval # of epochs')
 parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for when to start saving')
 parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for encoding')
-parser.add_argument("--kl_loss_scale",type=float,default=1.0,help='scale of kl_loss for optimizing')
-parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse')
 
 args = parser.parse_args()
 
-from tensorflow.python.framework.ops import disable_eager_execution
-
-#disable_eager_execution()
-
-def objective(trial,args):
+def objective(trial, args):
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     print("tf.test.is_gpu_available() =", tf.test.is_gpu_available())
     save_folder=args.save_img_parent+args.name+"/"
     save_model_folder=args.save_model_parent+args.name+"/"
     os.makedirs(save_folder, exist_ok=True)
     os.makedirs(save_model_folder, exist_ok=True)
-    n_decoders=len(args.dataset_names)
+    n_classes=len(args.dataset_names)
 
     print(args)
     OUTPUT_CHANNELS = 3
@@ -47,39 +43,28 @@ def objective(trial,args):
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
+
     with mirrored_strategy.scope():
         optimizer=keras.optimizers.legacy.Adam(learning_rate=0.0001)
         if args.load:
-            encoder=keras.models.load_model(save_model_folder+"encoder")
-            decoders=[keras.models.load_model(save_model_folder+"decoder_{}".format(d)) for d in range(n_decoders)]
-            inputs = encoder.inputs
-            [z_mean, z_log_var, latents]=encoder(inputs)
-            y_vae_list = [Model(inputs, [d(latents),z_mean, z_log_var]) for d in decoders]
-
+            classifier_model=tf.keras.models.load_model(save_model_folder+"classifier_model")
             with open(save_model_folder+"/meta_data.json","r") as src_file:
                 start_epoch=json.load(src_file)["epoch"]
 
             print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch),flush=True)
-
         else:
-            y_vae_list=get_y_vae_list(args.latent_dim, input_shape, n_decoders)
-
-    dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
-    test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
-    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,optimizer,reconstruction_loss_function_name=args.reconstruction_loss_function_name,start_epoch=start_epoch,kl_loss_scale=args.kl_loss_scale)
-    callbacks=[
-        YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3)
-    ]
+            classifier_model = get_classifier_model(args.latent_dim,input_shape,n_classes)
+    
+    dataset=yvae_get_labeled_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
+    trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset,start_epoch)
     if args.save:
-        callbacks.append(YvaeSavingCallback(trainer, save_model_folder, args.threshold, args.interval))
-    trainer.callbacks=callbacks
+        trainer.callbacks=[YvaeClassifierSavingCallback(trainer, save_model_folder, args.threshold, args.interval)]
     print("begin loop :O")
     trainer.train_loop()
 
-    print("all done :)))")
+    print("end loop :)")
 
 if __name__ == '__main__':
     print("begin")
-    print(args)
     objective(None, args)
     print("end")

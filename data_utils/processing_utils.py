@@ -70,6 +70,7 @@ class OneHotEncoder:
         index=self.path_list.index(path)
         ret=[0 for _ in self.path_list]
         ret[index]=1
+        #print(index,path,ret)
         return tf.cast(ret, tf.float32)
 
 def get_labeled_datasets_train(path_list,image_dim, preprocess=False,method=tf.image.ResizeMethod.GAUSSIAN):
@@ -84,11 +85,11 @@ def get_labeled_datasets_train(path_list,image_dim, preprocess=False,method=tf.i
     if preprocess:
         preprocess_image_train=get_reprocess_image_train(image_dim,method)
         image_dataset = tf.data.Dataset.from_tensor_slices(images).map(
-        preprocess_image_train, num_parallel_calls=AUTOTUNE)
+            preprocess_image_train, num_parallel_calls=AUTOTUNE)
     else:
         normalize=get_normalize(image_dim,method)
         image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
-        normalize, num_parallel_calls=AUTOTUNE)
+            normalize, num_parallel_calls=AUTOTUNE)
     label_dataset=tf.data.Dataset.from_tensor_slices(labels)
     return tf.data.Dataset.zip((image_dataset, label_dataset))
 
@@ -103,7 +104,7 @@ def get_labeled_datasets_test(path_list,image_dim, method=tf.image.ResizeMethod.
         labels+=path_labels
     normalize=get_normalize(image_dim,method)
     image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
-    normalize, num_parallel_calls=AUTOTUNE)
+        normalize, num_parallel_calls=AUTOTUNE)
     label_dataset=tf.data.Dataset.from_tensor_slices(labels)
     return tf.data.Dataset.zip((image_dataset, label_dataset))
 
