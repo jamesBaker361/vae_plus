@@ -11,7 +11,7 @@ SHARED_ENCODER_NAME='shared_encoder'
 ENCODER_INPUT_NAME='encoder_input'
 PARTIAL_ENCODER_NAME='partial_encoder_{}'
 ENCODER_BN_NAME='encoder_bn_{}'
-ENCODER_STEM_NAME='encoder_stem'
+ENCODER_STEM_NAME='encoder_stem_{}'
 DECODER_NAME='decoder_{}'
 
 def sampling(args):
@@ -95,7 +95,7 @@ def get_mixed_pretrained_encoder(input_shape, latent_dim, pretrained_encoder, st
     pretrained_partial=get_partial_pretrained_encoder(pretrained_encoder, start_name)
     x=partial(partial.input)
     [z_mean, z_log, z]=pretrained_partial(x)
-    return Model(partial.input, [z_mean, z_log, z],name='encoder_stem_{}'.format(n))
+    return Model(partial.input, [z_mean, z_log, z],name=ENCODER_STEM_NAME.format(n))
 
 def get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, start_name):
     encoders=[get_mixed_pretrained_encoder(input_shape, latent_dim, pretrained_encoder, start_name,n) for n in range(n_classes)]

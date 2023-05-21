@@ -25,6 +25,7 @@ parser.add_argument("--image_dim",type=int, default=128)
 parser.add_argument("--interval",type=int,default=10,help='save model every interval # of epochs')
 parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for when to start saving')
 parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for encoding')
+parser.add_argument("--log_dir_parent",type=str,default="logs/")
 
 args = parser.parse_args()
 
@@ -33,8 +34,10 @@ def objective(trial, args):
     print("tf.test.is_gpu_available() =", tf.test.is_gpu_available())
     save_folder=args.save_img_parent+args.name+"/"
     save_model_folder=args.save_model_parent+args.name+"/"
+    log_dir=args.log_dir_parent+args.name
     os.makedirs(save_folder, exist_ok=True)
     os.makedirs(save_model_folder, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
     n_classes=len(args.dataset_names)
 
     print(args)
@@ -56,7 +59,7 @@ def objective(trial, args):
             classifier_model = get_classifier_model(args.latent_dim,input_shape,n_classes)
     
     dataset=yvae_get_labeled_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
-    trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset,start_epoch)
+    trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset,log_dir=log_dir,mirrored_strategy=mirrored_strategy,start_epoch=start_epoch)
     if args.save:
         trainer.callbacks=[YvaeClassifierSavingCallback(trainer, save_model_folder, args.threshold, args.interval)]
     print("begin loop :O")

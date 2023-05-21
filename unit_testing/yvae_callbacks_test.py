@@ -56,6 +56,8 @@ def YvaeClassifierSavingCallbackTest(
     classifier_model=tf.saved_model.load(saved_model_folder+"classifier_model")
 
 
+
+
 if __name__=='__main__':
     for dim in [64]:
         input_shape=(dim,dim,3)

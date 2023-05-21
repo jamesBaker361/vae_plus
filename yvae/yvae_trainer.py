@@ -8,7 +8,7 @@ TEST='/test'
 TEST_INTERVAL=10
 
 class VAE_Trainer:
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir,mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
         self.vae_list=vae_list
         self.decoders=[vae_list[i].get_layer('decoder_{}'.format(i)) for i in range(len(vae_list))]
         self.epochs=epochs
@@ -66,9 +66,9 @@ class VAE_Trainer:
                         total_loss,reconstruction_loss=self.train_step(batch,vae)
                     else:
                         total_loss,reconstruction_loss=self.distributed_train_step(batch,vae)
-                    epoch_losses[d]+=total_loss
+                    
             #print([ep.numpy() for ep in epoch_losses])
-            print('epoch {} sum: {} mean: {} std dev: {}'.format(e,np.sum(epoch_losses), np.mean(epoch_losses), np.std(epoch_losses)))
+            print('epoch {} loss: {}'.format(e,self.train_loss.result()))
             print ('\nTime taken for epoch {} is {} sec\n'.format(e,time.time()-start))
             with self.summary_writer.as_default():
                 tf.summary.scalar('train_loss', self.train_loss.result(), step=e)
@@ -88,7 +88,6 @@ class VAE_Trainer:
                 with self.summary_writer.as_default():
                     tf.summary.scalar('test_loss', self.test_loss.result(), step=e)
                     tf.summary.scalar('test_reconstruction_loss', self.test_recontruction_loss.result(), step=e)
-        return np.mean(epoch_losses)
     
     
     def generate_images(self,batch_size):
@@ -98,8 +97,8 @@ class VAE_Trainer:
         return [decoder(noise) for decoder in self.decoders]
 
 class YVAE_Trainer(VAE_Trainer):
-    def __init__(self,y_vae_list,epochs,dataset_dict, test_dataset_dict,optimizer,reconstruction_loss_function_name,log_dir, mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
-        super().__init__(y_vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir,mirrored_strategy ,kl_loss_scale,callbacks,start_epoch)
+    def __init__(self,y_vae_list,epochs,dataset_dict, test_dataset_dict,optimizer,reconstruction_loss_function_name,log_dir='', mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
+        super().__init__(y_vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
         self.encoder=y_vae_list[0].get_layer('encoder')
         if reconstruction_loss_function_name == 'binary_crossentropy':
             self.reconstruction_loss_function=tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)

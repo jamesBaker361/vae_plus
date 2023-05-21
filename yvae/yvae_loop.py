@@ -27,6 +27,7 @@ parser.add_argument("--kl_loss_scale",type=float,default=1.0,help='scale of kl_l
 parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse')
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
+parser.add_argument("--use_unit",help='whether to use unsupervised image to image',type=bool,default=False)
 
 args = parser.parse_args()
 

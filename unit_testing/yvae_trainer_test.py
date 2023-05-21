@@ -15,7 +15,7 @@ def YVAE_Trainer_test(
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
     optimizer=keras.optimizers.legacy.Adam(learning_rate=0.0001)
-    trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer,LOG_DIR, reconstruction_loss_function_name)
+    trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name,log_dir=LOG_DIR)
     trainer.train_loop()
 
 def YVAE_Trainer_test_reconstruction(
@@ -28,7 +28,7 @@ def YVAE_Trainer_test_reconstruction(
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
     optimizer=keras.optimizers.legacy.Adam(learning_rate=0.0001)
-    trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer, LOG_DIR,reconstruction_loss_function_name)
+    trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer, reconstruction_loss_function_name, log_dir=LOG_DIR)
     trainer.train_loop()
 
 def YVAE_Trainer_generate_images_test(
@@ -41,7 +41,7 @@ def YVAE_Trainer_generate_images_test(
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
     optimizer=keras.optimizers.Adam(learning_rate=0.0001)
-    trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer,LOG_DIR,reconstruction_loss_function_name)
+    trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name, log_dir=LOG_DIR)
     trainer.generate_images(2)
 
 def VAE_Trainer_Unit_test(input_shape=(32,32,3),
@@ -58,7 +58,8 @@ def VAE_Trainer_Unit_test(input_shape=(32,32,3),
     kl_loss_scale=1.0
     callbacks=[]
     start_epoch=0
-    trainer=VAE_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,LOG_DIR,None,kl_loss_scale,callbacks,start_epoch)
+    trainer=VAE_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,
+                        mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
     trainer.train_loop()
 
 def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
@@ -75,7 +76,7 @@ def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
     kl_loss_scale=1.0
     callbacks=[]
     start_epoch=0
-    trainer=VAE_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,LOG_DIR,None,kl_loss_scale,callbacks,start_epoch)
+    trainer=VAE_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
     trainer.generate_images(2)
 
 

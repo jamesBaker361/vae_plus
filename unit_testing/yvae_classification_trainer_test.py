@@ -15,7 +15,7 @@ def YVAE_Classifier_Trainer_test(
     batch_size=4
     
     dataset=yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names,image_dim=input_shape[1])
-    trainer=YVAE_Classifier_Trainer(classifier_model, epochs, optimizer, dataset)
+    trainer=YVAE_Classifier_Trainer(classifier_model, epochs, optimizer, dataset, log_dir='logs/yvae_classification_trainer_test')
     trainer.train_loop()
     
 if __name__=='__main__':
