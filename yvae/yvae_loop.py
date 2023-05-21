@@ -25,6 +25,8 @@ parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for 
 parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for encoding')
 parser.add_argument("--kl_loss_scale",type=float,default=1.0,help='scale of kl_loss for optimizing')
 parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse')
+parser.add_argument("--log_dir_parent",type=str,default="logs/")
+parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
 
 args = parser.parse_args()
 
@@ -33,12 +35,13 @@ from tensorflow.python.framework.ops import disable_eager_execution
 #disable_eager_execution()
 
 def objective(trial,args):
-    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
-    print("tf.test.is_gpu_available() =", tf.test.is_gpu_available())
+    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
     save_folder=args.save_img_parent+args.name+"/"
     save_model_folder=args.save_model_parent+args.name+"/"
+    log_dir=args.log_dir_parent+args.name
     os.makedirs(save_folder, exist_ok=True)
     os.makedirs(save_model_folder, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
     n_decoders=len(args.dataset_names)
 
     print(args)
@@ -55,6 +58,7 @@ def objective(trial,args):
             inputs = encoder.inputs
             [z_mean, z_log_var, latents]=encoder(inputs)
             y_vae_list = [Model(inputs, [d(latents),z_mean, z_log_var]) for d in decoders]
+            
 
             with open(save_model_folder+"/meta_data.json","r") as src_file:
                 start_epoch=json.load(src_file)["epoch"]
@@ -64,9 +68,15 @@ def objective(trial,args):
         else:
             y_vae_list=get_y_vae_list(args.latent_dim, input_shape, n_decoders)
 
+        for vae in y_vae_list:
+            vae.build(input_shape)
+
     dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
     test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
-    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,optimizer,reconstruction_loss_function_name=args.reconstruction_loss_function_name,start_epoch=start_epoch,kl_loss_scale=args.kl_loss_scale)
+    strategy=None
+    if args.use_strategy:
+        strategy=mirrored_strategy
+    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name=args.reconstruction_loss_function_name,log_dir=log_dir,mirrored_strategy=strategy,start_epoch=start_epoch,kl_loss_scale=args.kl_loss_scale)
     callbacks=[
         YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3)
     ]

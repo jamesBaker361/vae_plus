@@ -4,7 +4,7 @@ import tensorflow as tf
 import time
 
 class YVAE_Classifier_Trainer:
-    def __init__(self,classifier_model,epochs,optimizer,dataset,start_epoch=0,callbacks=[]):
+    def __init__(self,classifier_model,epochs,optimizer,dataset,mirrored_strategy=None,start_epoch=0,callbacks=[]):
         self.classifier_model=classifier_model
         self.encoder=classifier_model.get_layer('encoder')
         self.classification_head=classifier_model.get_layer('classification_head')
@@ -14,6 +14,7 @@ class YVAE_Classifier_Trainer:
         self.dataset=dataset
         self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=True,reduction=tf.keras.losses.Reduction.SUM)
         self.callbacks=callbacks
+        self.mirrored_strategy=mirrored_strategy
 
     @tf.function
     def train_step(self,batch):

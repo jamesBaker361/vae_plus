@@ -47,8 +47,8 @@ def get_unit_list_test(input_shape=(32,32,3), latent_dim=8, start_name='encoder_
 
 
 if __name__ =='__main__':
-    #classification_head_test()
-    #classification_model_test()
-    #get_partial_pretrained_encoder_test()
-    #get_mixed_pretrained_encoder_test()
+    classification_head_test()
+    classification_model_test()
+    get_partial_pretrained_encoder_test()
+    get_mixed_pretrained_encoder_test()
     get_unit_list_test()
