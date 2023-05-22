@@ -12,7 +12,9 @@ ENCODER_INPUT_NAME='encoder_input'
 PARTIAL_ENCODER_NAME='partial_encoder_{}'
 ENCODER_BN_NAME='encoder_bn_{}'
 ENCODER_STEM_NAME='encoder_stem_{}'
+ENCODER_CONV_NAME='encoder_conv_{}'
 DECODER_NAME='decoder_{}'
+ENCODER_NAME='encoder'
 
 def sampling(args):
     z_mean, z_log_var,latent_dim = args
@@ -27,53 +29,28 @@ class SamplingLayer(keras.layers.Layer):
     def call(self,args):
         return sampling(args)
 
-class Encoder(keras.layers.Layer):
-    def __init__(self,latent_dim, *args, **kwargs):
-        super(Encoder, self).__init__(*args,**kwargs)
-        self.latent_dim=latent_dim
-
-    def call(self,inputs):
-        x = Conv2D(32, (3, 3), padding='same', activation='relu')(inputs)
-        x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-        x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Conv2D(128, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-        x = Conv2D(128, (3, 3), padding='same', activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Conv2D(256, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-        x = Conv2D(256, (3, 3), padding='same', activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Conv2D(512, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-        x = Conv2D(512, (3, 3), padding='same', activation='relu')(x)
-        x = BatchNormalization()(x)
-        x = Flatten()(x)
-        z_mean = Dense(self.latent_dim, name='z_mean')(x)
-        z_log_var = Dense(self.latent_dim, name='z_log_var')(x)
-        latents=SamplingLayer(name='z')([z_mean, z_log_var,self.latent_dim])
-        return [z_mean, z_log_var, latents]
-
 
 def get_encoder(inputs, latent_dim):
-    x = Conv2D(32, (3, 3), padding='same', activation='relu',name='encoder_conv_0')(inputs)
-    x = Conv2D(32, (3, 3), padding='same', activation='relu',name='encoder_conv_1')(x)
+    x = Conv2D(32, (3, 3), padding='same', activation='relu',name=ENCODER_CONV_NAME.format(0))(inputs)
+    x = Conv2D(32, (3, 3), padding='same', activation='relu',name=ENCODER_CONV_NAME.format(1))(x)
     x = BatchNormalization(name=ENCODER_BN_NAME.format(0))(x)
     count=2
     bn_count=1
     for dim in [64, 128,256, 512]:
-        x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same', activation='relu',name='encoder_conv_{}'.format(count))(x)
+        x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same', activation='relu',name=ENCODER_CONV_NAME.format(count))(x)
         count+=1
-        x = Conv2D(dim, (3, 3), padding='same', activation='relu',name='encoder_conv_{}'.format(count))(x)
+        x = Conv2D(dim, (3, 3), padding='same', activation='relu',name=ENCODER_CONV_NAME.format(count))(x)
         count+=1
         x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         bn_count+=1
     x = Flatten(name="flatten")(x)
     z_mean = Dense(latent_dim, name='z_mean')(x)
     z_log_var = Dense(latent_dim, name='z_log_var')(x)
-    return Model(inputs, [z_mean, z_log_var, SamplingLayer(name='z')([z_mean, z_log_var,latent_dim])], name='encoder')
+    return Model(inputs, [z_mean, z_log_var, SamplingLayer(name='z')([z_mean, z_log_var,latent_dim])], name=ENCODER_NAME)
 
 def get_partial_encoder(input_shape, latent_dim, start_name,end_name,n):
+    '''gets the part of the encoder from layers [start_name:end_name] (exclusive)
+    '''
     inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
     encoder=get_encoder(inputs, latent_dim)
     layer_names=[layer.name for layer in encoder.layers]
@@ -82,7 +59,9 @@ def get_partial_encoder(input_shape, latent_dim, start_name,end_name,n):
     subset=encoder.layers[start_index:end_index]
     return tf.keras.Sequential(subset,name=PARTIAL_ENCODER_NAME.format(n))
 
-def get_partial_pretrained_encoder(pretrained_encoder, start_name):
+def get_shared_partial(pretrained_encoder, start_name):
+    '''gets the part of the encoder from layer [start_name:]
+    '''
     layer_names=[layer.name for layer in pretrained_encoder.layers]
     start_index=layer_names.index(start_name)
     inputs=pretrained_encoder.layers[start_index].input
@@ -92,9 +71,9 @@ def get_partial_pretrained_encoder(pretrained_encoder, start_name):
 
 def get_mixed_pretrained_encoder(input_shape, latent_dim, pretrained_encoder, start_name,n=0):
     partial=get_partial_encoder(input_shape, latent_dim, ENCODER_INPUT_NAME,start_name,n)
-    pretrained_partial=get_partial_pretrained_encoder(pretrained_encoder, start_name)
+    shared_partial=get_shared_partial(pretrained_encoder, start_name)
     x=partial(partial.input)
-    [z_mean, z_log, z]=pretrained_partial(x)
+    [z_mean, z_log, z]=shared_partial(x)
     return Model(partial.input, [z_mean, z_log, z],name=ENCODER_STEM_NAME.format(n))
 
 def get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, start_name):

@@ -10,7 +10,7 @@ TEST_INTERVAL=10
 class VAE_Trainer:
     def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
         self.vae_list=vae_list
-        self.decoders=[vae_list[i].get_layer('decoder_{}'.format(i)) for i in range(len(vae_list))]
+        self.decoders=[vae_list[i].get_layer(DECODER_NAME.format(i)) for i in range(len(vae_list))]
         self.epochs=epochs
         self.dataset_names=[k for k in dataset_dict.keys()]
         self.dataset_list=[v for v in dataset_dict.values()]
@@ -95,6 +95,14 @@ class VAE_Trainer:
         print(noise_shape)
         noise=tf.random.normal((batch_size, *noise_shape))
         return [decoder(noise) for decoder in self.decoders]
+
+class VAE_Unit_Trainer(VAE_Trainer):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
+        super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
+        self.shared_partial=vae_list[0].get_layer(SHARED_ENCODER_NAME)
+        self.partials=[vae_list[i].get_layer(PARTIAL_ENCODER_NAME.format(i)) for i in range(len(vae_list))]
+
+
 
 class YVAE_Trainer(VAE_Trainer):
     def __init__(self,y_vae_list,epochs,dataset_dict, test_dataset_dict,optimizer,reconstruction_loss_function_name,log_dir='', mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0):

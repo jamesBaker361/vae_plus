@@ -5,6 +5,7 @@ sys.path.append("data_utils")
 import tensorflow as tf
 import json
 from processing_utils import *
+from yvae_model import *
 
 class YvaeImageGenerationCallback:
     def __init__(self, yvae_trainer,test_dataset_dict,image_output_dir,batch_size):
@@ -67,7 +68,7 @@ class YvaeSavingCallback:
         if epoch % self.interval ==0 and epoch>=self.threshold:
             self.yvae_trainer.encoder.save(self.save_model_folder+"encoder")
             for x in range(len(self.yvae_trainer.decoders)):
-                self.yvae_trainer.decoders[x].save(self.save_model_folder+"decoder_{}".format(x))
+                self.yvae_trainer.decoders[x].save(self.save_model_folder+DECODER_NAME.format(x))
             print('saved at location {} epoch {}'.format(self.save_model_folder, epoch),flush=True)
             meta_data = {"epoch":epoch}
             json_object = json.dumps(meta_data, indent=4)
@@ -93,3 +94,16 @@ class YvaeClassifierSavingCallback:
             # Writing to sample.json
             with open(self.save_model_folder+"meta_data.json", "w+") as outfile:
                 outfile.write(json_object)
+
+
+class YvaeUnitSavingCallback:
+    def __init__(self,trainer,save_model_folder,threshold,interval):
+        self.trainer=trainer
+        self.save_model_folder=save_model_folder
+        self.threshold=threshold
+        self.interval=interval
+
+    def __call__(self, epoch):
+        if epoch % self.interval ==0 and epoch>=self.threshold:
+            shared_partial=self.trainer.unit_list[0].get_layer(SHARED_ENCODER_NAME)
+            
