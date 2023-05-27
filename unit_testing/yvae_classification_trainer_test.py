@@ -10,12 +10,13 @@ def YVAE_Classifier_Trainer_test(
     epochs=1):
     dataset_names=["jlbaker361/flickr_humans_mini", "jlbaker361/anime_faces_mini"]
     n_classes=len(dataset_names)
-    optimizer=keras.optimizers.legacy.Adam(learning_rate=0.0001)
+    optimizer=keras.optimizers.Adam(learning_rate=0.0001)
     classifier_model=get_classifier_model(latent_dim,input_shape,n_classes)
     batch_size=4
     
     dataset=yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names,image_dim=input_shape[1])
-    trainer=YVAE_Classifier_Trainer(classifier_model, epochs, optimizer, dataset, log_dir='logs/yvae_classification_trainer_test')
+    test_dataset=yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names,image_dim=input_shape[1])
+    trainer=YVAE_Classifier_Trainer(classifier_model, epochs, optimizer, dataset,test_dataset=test_dataset , log_dir='logs/yvae_classification_trainer_test')
     trainer.train_loop()
     
 if __name__=='__main__':

@@ -35,6 +35,8 @@ from tensorflow.python.framework.ops import disable_eager_execution
 
 #disable_eager_execution()
 
+tf.config.run_functions_eagerly(True)
+
 def objective(trial,args):
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
     save_folder=args.save_img_parent+args.name+"/"
@@ -52,7 +54,8 @@ def objective(trial,args):
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
-        optimizer=keras.optimizers.legacy.Adam(learning_rate=0.0001)
+        GLOBAL_BATCH_SIZE = args.batch_size * mirrored_strategy.num_replicas_in_sync
+        optimizer=keras.optimizers.Adam(learning_rate=0.0001)
         if args.load:
             encoder=keras.models.load_model(save_model_folder+"encoder")
             decoders=[keras.models.load_model(save_model_folder+"decoder_{}".format(d)) for d in range(n_decoders)]
@@ -69,15 +72,12 @@ def objective(trial,args):
         else:
             y_vae_list=get_y_vae_list(args.latent_dim, input_shape, n_decoders)
 
-        for vae in y_vae_list:
-            vae.build(input_shape)
-
     dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
     test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
     strategy=None
-    if args.use_strategy:
+    if True:
         strategy=mirrored_strategy
-    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name=args.reconstruction_loss_function_name,log_dir=log_dir,mirrored_strategy=strategy,start_epoch=start_epoch,kl_loss_scale=args.kl_loss_scale)
+    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name=args.reconstruction_loss_function_name,log_dir=log_dir,mirrored_strategy=strategy,start_epoch=start_epoch,kl_loss_scale=args.kl_loss_scale,global_batch_size=GLOBAL_BATCH_SIZE)
     callbacks=[
         YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3)
     ]

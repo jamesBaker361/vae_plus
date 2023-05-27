@@ -10,7 +10,7 @@ from yvae_classification_loop import *
 def objective_test(image_dim):
     args.load=False
     args.save=False
-    args.epochs=2
+    args.epochs=12
     args.dataset_names=["jlbaker361/flickr_humans_mini", "jlbaker361/anime_faces_mini"]
     args.batch_size=4
     args.name='unit_testing_classification_{}'.format(image_dim)

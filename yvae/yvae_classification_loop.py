@@ -30,7 +30,9 @@ parser.add_argument("--log_dir_parent",type=str,default="logs/")
 args = parser.parse_args()
 
 def objective(trial, args):
-    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print("Num physical GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    logical_gpus = tf.config.list_logical_devices('GPU')
+    print("Logical GPUs ", len(logical_gpus))
     print("tf.test.is_gpu_available() =", tf.test.is_gpu_available())
     save_folder=args.save_img_parent+args.name+"/"
     save_model_folder=args.save_model_parent+args.name+"/"
@@ -45,10 +47,10 @@ def objective(trial, args):
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy()
+    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus, cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
 
     with mirrored_strategy.scope():
-        optimizer=keras.optimizers.legacy.Adam(learning_rate=0.0001)
+        optimizer=keras.optimizers.Adam(learning_rate=0.0001)
         if args.load:
             classifier_model=tf.keras.models.load_model(save_model_folder+"classifier_model")
             with open(save_model_folder+"/meta_data.json","r") as src_file:
@@ -59,7 +61,8 @@ def objective(trial, args):
             classifier_model = get_classifier_model(args.latent_dim,input_shape,n_classes)
     
     dataset=yvae_get_labeled_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
-    trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset,log_dir=log_dir,mirrored_strategy=mirrored_strategy,start_epoch=start_epoch)
+    test_dataset=yvae_get_labeled_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
+    trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset, test_dataset=test_dataset,log_dir=log_dir,mirrored_strategy=mirrored_strategy,start_epoch=start_epoch)
     if args.save:
         trainer.callbacks=[YvaeClassifierSavingCallback(trainer, save_model_folder, args.threshold, args.interval)]
     print("begin loop :O")

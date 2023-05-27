@@ -105,5 +105,14 @@ class YvaeUnitSavingCallback:
 
     def __call__(self, epoch):
         if epoch % self.interval ==0 and epoch>=self.threshold:
-            shared_partial=self.trainer.unit_list[0].get_layer(SHARED_ENCODER_NAME)
-            
+            self.trainer.shared_partial.save(self.save_model_folder+SHARED_ENCODER_NAME)
+            for x in range(len(self.yvae_trainer.decoders)):
+                self.trainer.decoders[x].save(self.save_model_folder+DECODER_NAME.format(x))
+                self.trainer.partials[x].save(self.save_model_folder+PARTIAL_ENCODER_NAME.format(x))
+            print('saved at location {} epoch {}'.format(self.save_model_folder, epoch),flush=True)
+            meta_data = {"epoch":epoch}
+            json_object = json.dumps(meta_data, indent=4)
+ 
+            # Writing to sample.json
+            with open(self.save_model_folder+"meta_data.json", "w+") as outfile:
+                outfile.write(json_object)

@@ -132,6 +132,32 @@ def get_single_dataset_test(unit_test,path,image_dim,method=tf.image.ResizeMetho
     return tf.data.Dataset.from_tensor_slices(data_frame).map(
     normalize, num_parallel_calls=AUTOTUNE)
 
+def get_multiple_datasets_train(path_list,image_dim,preprocess=False,method=tf.image.ResizeMethod.GAUSSIAN):
+    images=[]
+    for path in path_list:
+        path_images=[np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='train']
+        images+=path_images
+    if preprocess:
+        preprocess_image_train=get_reprocess_image_train(image_dim,method)
+        image_dataset = tf.data.Dataset.from_tensor_slices(images).map(
+            preprocess_image_train, num_parallel_calls=AUTOTUNE)
+    else:
+        normalize=get_normalize(image_dim,method)
+        image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
+            normalize, num_parallel_calls=AUTOTUNE)
+    return image_dataset
+
+def get_multiple_datasets_test(path_list,image_dim,method=tf.image.ResizeMethod.GAUSSIAN):
+    images=[]
+    for path in path_list:
+        path_images=[np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='train']
+        images+=path_images
+    normalize=get_normalize(image_dim,method)
+    image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
+        normalize, num_parallel_calls=AUTOTUNE)
+    return tf.data.Dataset.from_tensor_slices(image_dataset)
+
+
 
 def get_datasets_train(unit_test,content_path, style_path,image_dim, preprocess=False,method=tf.image.ResizeMethod.GAUSSIAN):
     if unit_test:
