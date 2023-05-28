@@ -55,7 +55,7 @@ def objective(trial, args):
 
     with mirrored_strategy.scope():
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
-        optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
+        #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
             classifier_model=tf.keras.models.load_model(save_model_folder+"classifier_model")
             with open(save_model_folder+"/meta_data.json","r") as src_file:

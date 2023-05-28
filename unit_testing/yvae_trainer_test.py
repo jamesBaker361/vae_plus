@@ -3,6 +3,7 @@ sys.path.append('yvae')
 
 
 from yvae_trainer import *
+from yvae_data_helper import *
 LOG_DIR='logs/yvae_trainer_unit_testing/'
 
 def YVAE_Trainer_test(
@@ -59,7 +60,7 @@ def VAE_Trainer_Unit_test(input_shape=(32,32,3),
     kl_loss_scale=1.0
     callbacks=[]
     start_epoch=0
-    trainer=VAE_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,
+    trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,
                         mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
     trainer.train_loop()
 
@@ -78,7 +79,7 @@ def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
     kl_loss_scale=1.0
     callbacks=[]
     start_epoch=0
-    trainer=VAE_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
+    trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
     trainer.generate_images(2)
 
 def VAE_Creativity_Trainer_test(input_shape=(32,32,3),
@@ -90,10 +91,10 @@ def VAE_Creativity_Trainer_test(input_shape=(32,32,3),
     test_dataset_dict={}
     inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
     dataset_list=yvae_creativity_get_dataset_train(image_dim=input_shape[1])
-    pretrained_classifier=get_decoder(latent_dim, image_dim=input_shape[1])
+    pretrained_classifier=get_classifier_model(latent_dim,input_shape,n_classes)
     vae_list=get_y_vae_list(latent_dim, input_shape, 1)
     log_dir='./logs/unit_testing/creativity_loop/'
-    trainer=VAE_Creativity_Trainer(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir=log_dir,mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=pretrained_classifier, creativity_lambda=1.0)
+    trainer=VAE_Creativity_Trainer(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir=log_dir,mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=pretrained_classifier, creativity_lambda=1.0,n_classes=n_classes)
     trainer.train_loop()
     trainer.generate_images(2)
 

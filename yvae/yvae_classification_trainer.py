@@ -1,10 +1,11 @@
 from yvae_model import *
+from processing_utils import *
 import numpy as np
 import tensorflow as tf
 import time
 
 TEST_INTERVAL=10
-EPSILON= 1e-2
+EPSILON= 1e-8
 
 class YVAE_Classifier_Trainer:
     def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[]):
@@ -20,8 +21,12 @@ class YVAE_Classifier_Trainer:
         self.mirrored_strategy=mirrored_strategy
         self.log_dir=log_dir
         self.summary_writer = tf.summary.create_file_writer(log_dir)
-        if mirrored_strategy is not None:
-            with mirrored_strategy.scope():
+        self.reset_metrics()
+        
+
+    def reset_metrics(self):
+        if self.mirrored_strategy is not None:
+            with self.mirrored_strategy.scope():
                 self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=True,reduction=tf.keras.losses.Reduction.NONE)
                 self.train_loss = tf.keras.metrics.Sum('train_loss', dtype=tf.float32)
                 self.test_loss= tf.keras.metrics.Sum('test_loss', dtype=tf.float32)
@@ -61,8 +66,7 @@ class YVAE_Classifier_Trainer:
 
     def train_loop(self):
         for e in range(self.start_epoch,self.epochs):
-            self.train_loss.reset_states()
-            self.test_loss.reset_states()
+            self.reset_metrics()
             start = time.time()
             batch_losses=[]
             for batch in self.dataset:
@@ -86,4 +90,17 @@ class YVAE_Classifier_Trainer:
                     else:
                         loss=self.distributed_test_step(batch)
                 print('epoch {} test loss: {}'.format(e, self.test_loss.result()))
-                print ('\nTime taken for epoch {} is {} sec\n'.format(e,time.time()-start))
+                print ('\nTime taken for test epoch {} is {} sec\n'.format(e,time.time()-start))
+                with self.summary_writer.as_default():
+                    tf.summary.scalar('test_loss', self.test_loss.result(), step=e)
+                (imgs,labels)=next(iter(self.test_dataset))
+                predictions=self.classifier_model(imgs) + EPSILON
+                print('predictions:',predictions)
+                print('labels', labels)
+                img=imgs[0]
+                plt.title('pred: {} label: {}'.format(predictions[0], labels[0]))
+                plt.imshow(denormalize(img))
+                path='./test_img_{}.png'.format(e)
+                plt.savefig(path)
+                plt.clf()
+

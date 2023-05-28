@@ -155,31 +155,32 @@ class VAE_Unit_Trainer(VAE_Trainer):
 
 
 class VAE_Creativity_Trainer(VAE_Trainer):
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=None, creativity_lambda=1.0):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=None, creativity_lambda=1.0,n_classes=2):
         super().__init__(vae_list,epochs,dataset_dict={},test_dataset_dict={},optimizer=optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
         self.dataset_list=[dataset_list] #should be a list of images and shit from all classes
         self.creativity_lambda=creativity_lambda
         self.pretrained_classifier=pretrained_classifier
+        self.n_classes=n_classes
         if mirrored_strategy is not None:
             self.train_creativity_loss=tf.keras.metrics.Mean(TRAIN_CREATIVITY_LOSS, dtype=tf.float32)
             self.test_creativity_loss=tf.keras.metrics.Mean(TEST_CREATIVITY_LOSS, dtype=tf.float32)
             self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
-            self.compute_creativity_loss=get_compute_creativity_loss(self.reconstruction_loss_function, creativity_lambda, global_batch_size,len(dataset_dict))
+            self.compute_creativity_loss=get_compute_creativity_loss(self.reconstruction_loss_function, creativity_lambda, global_batch_size,n_classes)
             self.train_metrics[TRAIN_CREATIVITY_LOSS]=self.train_creativity_loss
             self.test_metrics[TEST_CREATIVITY_LOSS]=self.test_creativity_loss
         else:
             self.train_creativity_loss=tf.keras.metrics.Mean(TRAIN_CREATIVITY_LOSS, dtype=tf.float32)
             self.test_creativity_loss=tf.keras.metrics.Mean(TEST_CREATIVITY_LOSS, dtype=tf.float32)
             self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
-            self.compute_creativity_loss=get_compute_creativity_loss(self.reconstruction_loss_function, creativity_lambda, global_batch_size,len(dataset_dict))
+            self.compute_creativity_loss=get_compute_creativity_loss(self.reconstruction_loss_function, creativity_lambda, global_batch_size,n_classes)
             self.train_metrics[TRAIN_CREATIVITY_LOSS]=self.train_creativity_loss
             self.test_metrics[TEST_CREATIVITY_LOSS]=self.test_creativity_loss
-            
+
     def train_step(self,batch,vae):
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)
             reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
-            kl_loss=self.compute_kl_loss(batch, reconstruction, z_mean,z_log_var)
+            kl_loss=self.compute_kl_loss(z_mean,z_log_var)
             predicted_labels=self.pretrained_classifier(reconstruction)
             creativity_loss=self.compute_creativity_loss(predicted_labels)
             total_loss= reconstruction_loss+kl_loss+creativity_loss
@@ -194,7 +195,7 @@ class VAE_Creativity_Trainer(VAE_Trainer):
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)
             reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
-            kl_loss=self.compute_kl_loss(batch, reconstruction, z_mean,z_log_var)
+            kl_loss=self.compute_kl_loss(z_mean,z_log_var)
             predicted_labels=self.pretrained_classifier(batch)
             creativity_loss=self.compute_creativity_loss(predicted_labels)
             total_loss= reconstruction_loss+kl_loss+creativity_loss

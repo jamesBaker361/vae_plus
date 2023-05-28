@@ -31,8 +31,6 @@ parser.add_argument("--use_unit",help='whether to use unsupervised image to imag
 
 args = parser.parse_args()
 
-from tensorflow.python.framework.ops import disable_eager_execution
-
 #disable_eager_execution()
 
 tf.config.run_functions_eagerly(True)
@@ -56,14 +54,13 @@ def objective(trial,args):
     with mirrored_strategy.scope():
         GLOBAL_BATCH_SIZE = args.batch_size * mirrored_strategy.num_replicas_in_sync
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
-        optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
+        #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
             encoder=keras.models.load_model(save_model_folder+ENCODER_NAME)
             decoders=[keras.models.load_model(save_model_folder+DECODER_NAME.format(d)) for d in range(n_decoders)]
             inputs = encoder.inputs
             [z_mean, z_log_var, latents]=encoder(inputs)
             y_vae_list = [Model(inputs, [d(latents),z_mean, z_log_var]) for d in decoders]
-            
 
             with open(save_model_folder+"/meta_data.json","r") as src_file:
                 start_epoch=json.load(src_file)["epoch"]
@@ -87,6 +84,7 @@ def objective(trial,args):
     trainer.train_loop()
 
     print("all done :)))")
+    return trial
 
 if __name__ == '__main__':
     print("begin")
