@@ -26,7 +26,8 @@ def get_compute_kl_loss(kl_loss_scale, global_batch_size):
 def get_compute_creativity_loss(reconstruction_loss_function, creativity_lambda, global_batch_size,n_classes):
     def _compute_creativity_loss(predicted_labels):
         fill_value=1.0/n_classes
-        desired_output= tf.fill(dims=(global_batch_size, n_classes), value=fill_value)
+        batch_size=tf.shape(predicted_labels)[0]
+        desired_output= tf.fill(dims=(batch_size, n_classes), value=fill_value)
         per_example_loss= creativity_lambda* reconstruction_loss_function(desired_output, predicted_labels)
         return tf.nn.compute_average_loss(per_example_loss,
                                       global_batch_size=global_batch_size)

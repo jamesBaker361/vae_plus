@@ -36,7 +36,14 @@ args = parser.parse_args()
 tf.config.run_functions_eagerly(True)
 
 def objective(trial,args):
-    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+    physical_devices= tf.config.list_physical_devices('GPU')
+    print("Num physical GPUs Available: ",len(physical_devices))
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
+    
+    logical_gpus = tf.config.list_logical_devices('GPU')
+    print("Logical GPUs ", len(logical_gpus))
+    print("tf.test.is_gpu_available() =", tf.test.is_gpu_available())
     save_folder=args.save_img_parent+args.name+"/"
     save_model_folder=args.save_model_parent+args.name+"/"
     log_dir=args.log_dir_parent+args.name

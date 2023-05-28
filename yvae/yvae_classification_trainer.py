@@ -27,11 +27,11 @@ class YVAE_Classifier_Trainer:
     def reset_metrics(self):
         if self.mirrored_strategy is not None:
             with self.mirrored_strategy.scope():
-                self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=True,reduction=tf.keras.losses.Reduction.NONE)
+                self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
                 self.train_loss = tf.keras.metrics.Sum('train_loss', dtype=tf.float32)
                 self.test_loss= tf.keras.metrics.Sum('test_loss', dtype=tf.float32)
         else:
-            self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=True,reduction=tf.keras.losses.Reduction.NONE)
+            self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
             self.train_loss = tf.keras.metrics.Sum('train_loss', dtype=tf.float32)
             self.test_loss= tf.keras.metrics.Sum('test_loss', dtype=tf.float32)
 
@@ -39,7 +39,7 @@ class YVAE_Classifier_Trainer:
         with tf.GradientTape() as tape:
             (imgs,labels)=batch
             predictions=self.classifier_model(imgs) + EPSILON
-            loss=self.loss_function(predictions,labels)
+            loss=self.loss_function(labels, predictions)
         self.train_loss(loss)
         grads = tape.gradient(loss, self.classifier_model.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.classifier_model.trainable_weights))
@@ -48,7 +48,7 @@ class YVAE_Classifier_Trainer:
     def test_step(self,batch):
         (imgs,labels)=batch
         predictions=self.classifier_model(imgs)
-        loss=self.loss_function(predictions,labels)
+        loss=self.loss_function(labels, predictions)
         self.test_loss(loss)
         return loss
     
@@ -81,7 +81,18 @@ class YVAE_Classifier_Trainer:
                 tf.summary.scalar('train_loss', self.train_loss.result(), step=e)
             for callback in self.callbacks:
                 callback(e)
-            start = time.time()
+            (imgs,labels)=next(iter(self.test_dataset))
+            predictions=self.classifier_model(imgs) + EPSILON
+            loss=self.loss_function(labels,predictions)
+            print('predictions:',predictions)
+            print('labels', labels)
+            print('shape', tf.shape(imgs))
+            img=imgs[0]
+            plt.title('pred: {} label: {}'.format(predictions[0], labels[0]))
+            plt.imshow(denormalize(img))
+            path='{}_test_img_{}.png'.format(self.log_dir,e)
+            plt.savefig(path)
+            plt.clf()
             if e%TEST_INTERVAL==0:
                 start = time.time()
                 for batch in self.test_dataset:
@@ -93,14 +104,4 @@ class YVAE_Classifier_Trainer:
                 print ('\nTime taken for test epoch {} is {} sec\n'.format(e,time.time()-start))
                 with self.summary_writer.as_default():
                     tf.summary.scalar('test_loss', self.test_loss.result(), step=e)
-                (imgs,labels)=next(iter(self.test_dataset))
-                predictions=self.classifier_model(imgs) + EPSILON
-                print('predictions:',predictions)
-                print('labels', labels)
-                img=imgs[0]
-                plt.title('pred: {} label: {}'.format(predictions[0], labels[0]))
-                plt.imshow(denormalize(img))
-                path='./test_img_{}.png'.format(e)
-                plt.savefig(path)
-                plt.clf()
 
