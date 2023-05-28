@@ -171,6 +171,7 @@ def get_classifier_model(latent_dim,input_shape,n_classes):
 
 
 def get_y_vae_list(latent_dim, input_shape, n_decoders):
+    #we use this for creativty and non-unit
     inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
     encoder = get_encoder(inputs, latent_dim)
     encoder.build(input_shape)

@@ -73,26 +73,6 @@ class OneHotEncoder:
         #print(index,path,ret)
         return tf.cast(ret, tf.float32)
 
-def get_labeled_datasets_train(path_list,image_dim, preprocess=False,method=tf.image.ResizeMethod.GAUSSIAN):
-    labels=[]
-    images=[]
-    onehot=OneHotEncoder(path_list)
-    for path in path_list:
-        path_images=[np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='train']
-        path_labels=[onehot(path) for _ in path_images]
-        images+=path_images
-        labels+=path_labels
-    if preprocess:
-        preprocess_image_train=get_preprocess_image_train(image_dim,method)
-        image_dataset = tf.data.Dataset.from_tensor_slices(images).map(
-            preprocess_image_train, num_parallel_calls=AUTOTUNE)
-    else:
-        normalize=get_normalize(image_dim,method)
-        image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
-            normalize, num_parallel_calls=AUTOTUNE)
-    label_dataset=tf.data.Dataset.from_tensor_slices(labels)
-    return tf.data.Dataset.zip((image_dataset, label_dataset))
-
 def get_basic_generator(dataset):
     def _basic_generator():
         for data_point in dataset:
@@ -118,21 +98,6 @@ def get_labeled_datasets_generator_train(path_list,image_dim, preprocess=False,m
     label_dataset=tf.data.Dataset.from_generator(label_generator, output_signature=tf.TensorSpec(shape=(len(path_list)), dtype=tf.float32))
     return tf.data.Dataset.zip((image_dataset, label_dataset))
 
-def get_labeled_datasets_test(path_list,image_dim, method=tf.image.ResizeMethod.GAUSSIAN):
-    labels=[]
-    images=[]
-    onehot=OneHotEncoder(path_list)
-    for path in path_list:
-        path_images=[np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='test']
-        path_labels=[onehot(path) for _ in path_images]
-        images+=path_images
-        labels+=path_labels
-    normalize=get_normalize(image_dim,method)
-    image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
-        normalize, num_parallel_calls=AUTOTUNE)
-    label_dataset=tf.data.Dataset.from_tensor_slices(labels)
-    return tf.data.Dataset.zip((image_dataset, label_dataset))
-
 def get_labeled_datasets_generator_test(path_list,image_dim, method=tf.image.ResizeMethod.GAUSSIAN):
     labels=[]
     images=[]
@@ -144,7 +109,6 @@ def get_labeled_datasets_generator_test(path_list,image_dim, method=tf.image.Res
         labels+=path_labels
     image_function=get_normalize(image_dim,method)
     label_generator=get_basic_generator(labels)
-    image_generator=get_basic_generator(images)
     image_generator=get_basic_generator([image_function(img) for img in images])
     image_dataset = tf.data.Dataset.from_generator(image_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
     label_dataset=tf.data.Dataset.from_generator(label_generator, output_signature=tf.TensorSpec(shape=(len(path_list)), dtype=tf.float32))
@@ -153,26 +117,26 @@ def get_labeled_datasets_generator_test(path_list,image_dim, method=tf.image.Res
 
 def get_single_dataset_train(unit_test,path,image_dim, preprocess=False,method=tf.image.ResizeMethod.GAUSSIAN):
     if unit_test:
-        data_frame= [np.array(img['image']) for img in load_dataset("jlbaker361/little_dataset",split="train") if img['split']=='train']
+        images= [np.array(img['image']) for img in load_dataset("jlbaker361/little_dataset",split="train") if img['split']=='train']
     else:
-        data_frame= [np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='train']
+        images= [np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='train']
     if preprocess:
-        preprocess_image_train=get_preprocess_image_train(image_dim,method)
-        return tf.data.Dataset.from_tensor_slices(data_frame).map(
-        preprocess_image_train, num_parallel_calls=AUTOTUNE)
+        image_function=get_preprocess_image_train(image_dim,method)
     else:
-        normalize=get_normalize(image_dim,method)
-        return tf.data.Dataset.from_tensor_slices(data_frame).map(
-        normalize, num_parallel_calls=AUTOTUNE)
+        image_function=get_normalize(image_dim,method)
+    image_generator=get_basic_generator([image_function(img) for img in images])
+    image_dataset = tf.data.Dataset.from_generator(image_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
+    return image_dataset
     
 def get_single_dataset_test(unit_test,path,image_dim,method=tf.image.ResizeMethod.GAUSSIAN):
     if unit_test:
-        data_frame= [np.array(img['image']) for img in load_dataset("jlbaker361/little_dataset",split="train") if img['split']=='test']
+        images= [np.array(img['image']) for img in load_dataset("jlbaker361/little_dataset",split="train") if img['split']=='test']
     else:
-        data_frame= [np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='test']
-    normalize=get_normalize(image_dim, method)
-    return tf.data.Dataset.from_tensor_slices(data_frame).map(
-    normalize, num_parallel_calls=AUTOTUNE)
+        images= [np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='test']
+    image_function=get_normalize(image_dim, method)
+    image_generator=get_basic_generator([image_function(img) for img in images])
+    image_dataset = tf.data.Dataset.from_generator(image_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
+    return image_dataset
 
 def get_multiple_datasets_train(path_list,image_dim,preprocess=False,method=tf.image.ResizeMethod.GAUSSIAN):
     images=[]
@@ -183,8 +147,8 @@ def get_multiple_datasets_train(path_list,image_dim,preprocess=False,method=tf.i
         image_function=get_preprocess_image_train(image_dim,method)
     else:
         image_function=get_normalize(image_dim,method)
-    images=[image_function(img) for img in images]
-    image_dataset= tf.data.Dataset.from_tensor_slices(images)
+    image_generator=get_basic_generator([image_function(img) for img in images])
+    image_dataset = tf.data.Dataset.from_generator(image_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
     return image_dataset
 
 def get_multiple_datasets_test(path_list,image_dim,method=tf.image.ResizeMethod.GAUSSIAN):
@@ -192,9 +156,9 @@ def get_multiple_datasets_test(path_list,image_dim,method=tf.image.ResizeMethod.
     for path in path_list:
         path_images=[np.array(img['image']) for img in load_dataset(path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='train']
         images+=path_images
-    normalize=get_normalize(image_dim,method)
-    image_dataset= tf.data.Dataset.from_tensor_slices(images).map(
-        normalize, num_parallel_calls=AUTOTUNE)
+    image_function=get_normalize(image_dim,method)
+    image_generator=get_basic_generator([image_function(img) for img in images])
+    image_dataset = tf.data.Dataset.from_generator(image_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
     return image_dataset
 
 
@@ -208,13 +172,13 @@ def get_datasets_train(unit_test,content_path, style_path,image_dim, preprocess=
         data_frame_content=[np.array(img['image']) for img in load_dataset(content_path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='train']
     data_frame_style, data_frame_content = equal_length(data_frame_style, data_frame_content)
     if preprocess:
-        img_function=get_preprocess_image_train(image_dim,method)
+        image_function=get_preprocess_image_train(image_dim,method)
     else:
-        img_function=get_normalize(image_dim, method)
-    train_style= tf.data.Dataset.from_tensor_slices(data_frame_style).map(
-        img_function, num_parallel_calls=AUTOTUNE)
-    train_content = tf.data.Dataset.from_tensor_slices(data_frame_content).map(
-        img_function, num_parallel_calls=AUTOTUNE)
+        image_function=get_normalize(image_dim, method)
+    style_generator=get_basic_generator([image_function(img) for img in data_frame_style])
+    content_generator=get_basic_generator([image_function(img) for img in data_frame_content])
+    train_style= tf.data.Dataset.from_generator(style_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
+    train_content= tf.data.Dataset.from_generator(content_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
     return train_style, train_content
 
 def get_datasets_test(unit_test,content_path, style_path,image_dim,method=tf.image.ResizeMethod.GAUSSIAN):
@@ -225,9 +189,9 @@ def get_datasets_test(unit_test,content_path, style_path,image_dim,method=tf.ima
         data_frame_style= [np.array(img['image']) for img in load_dataset(style_path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='test']
         data_frame_content=[np.array(img['image']) for img in load_dataset(content_path,split="train",cache_dir="../../../../../scratch/jlb638/hf_cache") if img['split']=='test']
     data_frame_style, data_frame_content = equal_length(data_frame_style, data_frame_content)
-    normalize=get_normalize(image_dim,method)
-    test_style= tf.data.Dataset.from_tensor_slices(data_frame_style).map(
-        normalize, num_parallel_calls=AUTOTUNE)
-    test_content = tf.data.Dataset.from_tensor_slices(data_frame_content).map(
-        normalize, num_parallel_calls=AUTOTUNE)
+    image_function=get_normalize(image_dim,method)
+    style_generator=get_basic_generator([image_function(img) for img in data_frame_style])
+    content_generator=get_basic_generator([image_function(img) for img in data_frame_content])
+    test_style= tf.data.Dataset.from_generator(style_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
+    test_content= tf.data.Dataset.from_generator(content_generator, output_signature=tf.TensorSpec(shape=(image_dim,image_dim,3), dtype=tf.float32))
     return test_style, test_content

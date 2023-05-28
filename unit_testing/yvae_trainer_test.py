@@ -90,10 +90,11 @@ def VAE_Creativity_Trainer_test(input_shape=(32,32,3),
     inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
     dataset_list=yvae_creativity_get_dataset_train(image_dim=input_shape[1])
     pretrained_classifier=get_decoder(latent_dim, image_dim=input_shape[1])
-    pretrained_encoder=get_encoder(inputs, latent_dim)
-    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, start_name)
-    trainer=VAE_Creativity_Trainer(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=pretrained_classifier, creativity_lambda=1.0)
-    pass
+    vae_list=get_y_vae_list(latent_dim, input_shape, 1)
+    log_dir='./logs/unit_testing/creativity_loop/'
+    trainer=VAE_Creativity_Trainer(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir=log_dir,mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=pretrained_classifier, creativity_lambda=1.0)
+    trainer.train_loop()
+    trainer.generate_images(2)
 
 
 if __name__ =='__main__':

@@ -165,8 +165,16 @@ class VAE_Creativity_Trainer(VAE_Trainer):
             self.test_creativity_loss=tf.keras.metrics.Mean(TEST_CREATIVITY_LOSS, dtype=tf.float32)
             self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
             self.compute_creativity_loss=get_compute_creativity_loss(self.reconstruction_loss_function, creativity_lambda, global_batch_size,len(dataset_dict))
-
-
+            self.train_metrics[TRAIN_CREATIVITY_LOSS]=self.train_creativity_loss
+            self.test_metrics[TEST_CREATIVITY_LOSS]=self.test_creativity_loss
+        else:
+            self.train_creativity_loss=tf.keras.metrics.Mean(TRAIN_CREATIVITY_LOSS, dtype=tf.float32)
+            self.test_creativity_loss=tf.keras.metrics.Mean(TEST_CREATIVITY_LOSS, dtype=tf.float32)
+            self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+            self.compute_creativity_loss=get_compute_creativity_loss(self.reconstruction_loss_function, creativity_lambda, global_batch_size,len(dataset_dict))
+            self.train_metrics[TRAIN_CREATIVITY_LOSS]=self.train_creativity_loss
+            self.test_metrics[TEST_CREATIVITY_LOSS]=self.test_creativity_loss
+            
     def train_step(self,batch,vae):
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)

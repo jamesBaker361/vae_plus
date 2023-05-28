@@ -58,8 +58,8 @@ def objective(trial,args):
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
         optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
-            encoder=keras.models.load_model(save_model_folder+"encoder")
-            decoders=[keras.models.load_model(save_model_folder+"decoder_{}".format(d)) for d in range(n_decoders)]
+            encoder=keras.models.load_model(save_model_folder+ENCODER_NAME)
+            decoders=[keras.models.load_model(save_model_folder+DECODER_NAME.format(d)) for d in range(n_decoders)]
             inputs = encoder.inputs
             [z_mean, z_log_var, latents]=encoder(inputs)
             y_vae_list = [Model(inputs, [d(latents),z_mean, z_log_var]) for d in decoders]
