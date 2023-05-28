@@ -4,7 +4,7 @@ import tensorflow as tf
 import time
 
 TEST_INTERVAL=10
-EPSILON= 1e-4
+EPSILON= 1e-2
 
 class YVAE_Classifier_Trainer:
     def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[]):
@@ -61,8 +61,8 @@ class YVAE_Classifier_Trainer:
 
     def train_loop(self):
         for e in range(self.start_epoch,self.epochs):
-            self.train_loss.reset_state()
-            self.test_loss.reset_state()
+            self.train_loss.reset_states()
+            self.test_loss.reset_states()
             start = time.time()
             batch_losses=[]
             for batch in self.dataset:

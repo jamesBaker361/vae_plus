@@ -51,7 +51,8 @@ def VAE_Trainer_Unit_test(input_shape=(32,32,3),
     epochs=1):
     inputs = Input(shape=input_shape, name='encoder_input')
     pretrained_encoder=get_encoder(inputs, latent_dim)
-    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, start_name)
+    shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
@@ -69,7 +70,8 @@ def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
     epochs=1):
     inputs = Input(shape=input_shape, name='encoder_input')
     pretrained_encoder=get_encoder(inputs, latent_dim)
-    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, start_name)
+    shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
@@ -82,7 +84,6 @@ def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
 def VAE_Creativity_Trainer_test(input_shape=(32,32,3),
                                 latent_dim=10,
     n_classes=3,
-    start_name='encoder_conv_4',
     epochs=1):
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
     dataset_dict={}
@@ -105,6 +106,7 @@ if __name__ =='__main__':
         YVAE_Trainer_generate_images_test(input_shape=shape)
         VAE_Trainer_Unit_test(input_shape=shape)
         VAE_Trainer_Unit_generate_imgs_test(input_shape=shape)
+        VAE_Creativity_Trainer_test(input_shape=shape)
     for loss in ['mse', 'binary_crossentropy', 'log_cosh','huber']:
         YVAE_Trainer_test_reconstruction(reconstruction_loss_function_name=loss)
     print("all done! :)")
