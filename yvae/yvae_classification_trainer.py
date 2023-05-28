@@ -61,6 +61,8 @@ class YVAE_Classifier_Trainer:
 
     def train_loop(self):
         for e in range(self.start_epoch,self.epochs):
+            self.train_loss.reset_state()
+            self.test_loss.reset_state()
             start = time.time()
             batch_losses=[]
             for batch in self.dataset:
@@ -77,8 +79,11 @@ class YVAE_Classifier_Trainer:
                 callback(e)
             start = time.time()
             if e%TEST_INTERVAL==0:
+                start = time.time()
                 for batch in self.test_dataset:
                     if self.mirrored_strategy is None:
                         loss=self.test_step(batch)
                     else:
                         loss=self.distributed_test_step(batch)
+                print('epoch {} test loss: {}'.format(e, self.test_loss.result()))
+                print ('\nTime taken for epoch {} is {} sec\n'.format(e,time.time()-start))
