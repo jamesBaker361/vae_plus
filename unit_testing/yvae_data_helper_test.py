@@ -79,6 +79,14 @@ def yvae_creativity_get_dataset_test_test():
     plt.title(name)
     plt.savefig('yvae_creativity_{}_test.png'.format(name))
 
+def prod_dataset_test(image_dim=128):
+    print('image dim ', image_dim)
+    batch_size=2
+    dataset_names=["jlbaker361/flickr_humans_10k" ,"jlbaker361/anime_faces_10k", "jlbaker361/artfaces_padded"]
+    yvae_creativity_get_dataset_train(batch_size=batch_size,dataset_names=dataset_names,image_dim=image_dim,mirrored_strategy=None)
+    yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names,image_dim=image_dim)
+    yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names, image_dim=image_dim)
+
 if __name__ == '__main__':
     yvae_get_dataset_train_test()
     yvae_get_dataset_test_test()
@@ -86,4 +94,6 @@ if __name__ == '__main__':
     yvae_get_labeled_dataset_test_test()
     yvae_creativity_get_dataset_train_test()
     yvae_creativity_get_dataset_test_test()
+    for dim in [128,256, 512]:
+        prod_dataset_test(dim)
     print("all done with tests :-)")
