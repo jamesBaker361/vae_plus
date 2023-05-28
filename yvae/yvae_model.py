@@ -99,7 +99,7 @@ def load_unit_list(shared_partial, decoders, partials):
     for n in range(len(decoders)):
         partial=partials[n]
         partial.summary()
-        input_shape=partial.input_shape
+        input_shape=partial.input_shape[1:]
         inputs=Input(shape=input_shape, name=ENCODER_INPUT_NAME)
         x=partial(inputs)
         [z_mean, z_log, z]=shared_partial(x)

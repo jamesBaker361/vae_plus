@@ -87,9 +87,12 @@ def VAE_Creativity_Trainer_test(input_shape=(32,32,3),
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
     dataset_dict={}
     test_dataset_dict={}
+    inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
     dataset_list=yvae_creativity_get_dataset_train(image_dim=input_shape[1])
-    pretrained_classifier=None
-    trainer=VAE_Creativity_Trainer(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=None, creativity_lambda=1.0)
+    pretrained_classifier=get_decoder(latent_dim, image_dim=input_shape[1])
+    pretrained_encoder=get_encoder(inputs, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, start_name)
+    trainer=VAE_Creativity_Trainer(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=pretrained_classifier, creativity_lambda=1.0)
     pass
 
 
