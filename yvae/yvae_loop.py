@@ -56,6 +56,7 @@ def objective(trial,args):
     with mirrored_strategy.scope():
         GLOBAL_BATCH_SIZE = args.batch_size * mirrored_strategy.num_replicas_in_sync
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
+        optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
             encoder=keras.models.load_model(save_model_folder+"encoder")
             decoders=[keras.models.load_model(save_model_folder+"decoder_{}".format(d)) for d in range(n_decoders)]

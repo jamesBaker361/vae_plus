@@ -30,7 +30,11 @@ parser.add_argument("--log_dir_parent",type=str,default="logs/")
 args = parser.parse_args()
 
 def objective(trial, args):
-    print("Num physical GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    physical_devices= tf.config.list_physical_devices('GPU')
+    print("Num physical GPUs Available: ",len(physical_devices))
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
+    
     logical_gpus = tf.config.list_logical_devices('GPU')
     print("Logical GPUs ", len(logical_gpus))
     print("tf.test.is_gpu_available() =", tf.test.is_gpu_available())
@@ -51,6 +55,7 @@ def objective(trial, args):
 
     with mirrored_strategy.scope():
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
+        optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
             classifier_model=tf.keras.models.load_model(save_model_folder+"classifier_model")
             with open(save_model_folder+"/meta_data.json","r") as src_file:

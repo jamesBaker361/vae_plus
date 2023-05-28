@@ -15,6 +15,10 @@ ENCODER_STEM_NAME='encoder_stem_{}'
 ENCODER_CONV_NAME='encoder_conv_{}'
 DECODER_NAME='decoder_{}'
 ENCODER_NAME='encoder'
+CLASSIFIER_MODEL='classifier_model'
+CLASSIFICATION_HEAD='classification_head'
+Z_MEAN='z_mean'
+Z_LOG_VAR='z_log_var'
 
 def sampling(args):
     z_mean, z_log_var,latent_dim = args
@@ -44,8 +48,8 @@ def get_encoder(inputs, latent_dim):
         x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         bn_count+=1
     x = Flatten(name="flatten")(x)
-    z_mean = Dense(latent_dim, name='z_mean')(x)
-    z_log_var = Dense(latent_dim, name='z_log_var')(x)
+    z_mean = Dense(latent_dim, name=Z_MEAN)(x)
+    z_log_var = Dense(latent_dim, name=Z_LOG_VAR)(x)
     return Model(inputs, [z_mean, z_log_var, SamplingLayer(name='z')([z_mean, z_log_var,latent_dim])], name=ENCODER_NAME)
 
 def get_partial_encoder(input_shape, latent_dim, start_name,end_name,n):
@@ -70,22 +74,23 @@ def get_shared_partial(pretrained_encoder, start_name, latent_dim):
     #pretrained_encoder.summary()
     flat_encoder= tf.keras.Sequential( pretrained_encoder.layers[start_index:flatten_index+1] )
     x=flat_encoder(inputs)
-    z_mean=pretrained_encoder.get_layer('z_mean')(x)
-    z_log_var =pretrained_encoder.get_layer('z_log_var')(x)
+    z_mean=pretrained_encoder.get_layer(Z_MEAN)(x)
+    z_log_var =pretrained_encoder.get_layer(Z_LOG_VAR)(x)
     return Model(inputs, [z_mean, z_log_var, SamplingLayer(name='z')([z_mean, z_log_var,latent_dim])], name=SHARED_ENCODER_NAME)
 
     #subset=pretrained_encoder.layers[start_index:]
     #return tf.keras.Sequential(subset)
 
-def get_mixed_pretrained_encoder(input_shape, latent_dim, pretrained_encoder, start_name,n=0):
+def get_mixed_pretrained_encoder(input_shape, latent_dim, shared_partial, start_name,n=0):
+    #this is the shared and unshared parts together
     partial=get_partial_encoder(input_shape, latent_dim, ENCODER_INPUT_NAME,start_name,n)
-    shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
+    #shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
     x=partial(partial.input)
     [z_mean, z_log, z]=shared_partial(x)
     return Model(partial.input, [z_mean, z_log, z],name=ENCODER_STEM_NAME.format(n))
 
-def get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, start_name):
-    encoders=[get_mixed_pretrained_encoder(input_shape, latent_dim, pretrained_encoder, start_name,n) for n in range(n_classes)]
+def get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name):
+    encoders=[get_mixed_pretrained_encoder(input_shape, latent_dim, shared_partial, start_name,n) for n in range(n_classes)]
     decoders=[get_decoder(latent_dim, input_shape[1],n) for n in range(n_classes)]
     return compile_unit_list(encoders,decoders)
 
@@ -93,9 +98,12 @@ def load_unit_list(shared_partial, decoders, partials):
     encoders=[]
     for n in range(len(decoders)):
         partial=partials[n]
-        x=partial(partial.input)
+        partial.summary()
+        input_shape=partial.input_shape
+        inputs=Input(shape=input_shape, name=ENCODER_INPUT_NAME)
+        x=partial(inputs)
         [z_mean, z_log, z]=shared_partial(x)
-        mixed_pretrained_encoder=Model(partial.input, [z_mean, z_log, z],name=ENCODER_STEM_NAME.format(n))
+        mixed_pretrained_encoder=Model(inputs, [z_mean, z_log, z],name=ENCODER_STEM_NAME.format(n))
         encoders.append(mixed_pretrained_encoder)
     return compile_unit_list(encoders,decoders)
 
@@ -147,7 +155,7 @@ def get_classification_head(latent_dim,n_classes):
     x=Dense(latent_dim//4,activation='relu')(inputs)
     x=Dropout(0.1)(x)
     x=Dense(n_classes, activation='softmax')(x)
-    return Model(inputs, x,name='classification_head')
+    return Model(inputs, x,name=CLASSIFICATION_HEAD)
 
 def get_classifier_model(latent_dim,input_shape,n_classes):
     inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
@@ -158,7 +166,7 @@ def get_classifier_model(latent_dim,input_shape,n_classes):
 
     [z_mean, z_log_var, latents]=encoder(inputs)
     predictions=classification_head(latents)
-    return Model(inputs, predictions, name='classifier_model')
+    return Model(inputs, predictions, name=CLASSIFIER_MODEL)
 
 
 
