@@ -19,6 +19,7 @@ CLASSIFIER_MODEL='classifier_model'
 CLASSIFICATION_HEAD='classification_head'
 Z_MEAN='z_mean'
 Z_LOG_VAR='z_log_var'
+RESNET_CLASSIFIER='resnet_classifier'
 
 def sampling(args):
     z_mean, z_log_var,latent_dim = args
@@ -206,3 +207,39 @@ def get_y_vae_list(latent_dim, input_shape, n_decoders):
         vae.build(input_shape)
     return y_vae_list
 
+def residual_block(input_tensor, filters, kernel_size):
+    # Convolutional layers
+    x = tf.keras.layers.Conv2D(filters, kernel_size, padding='same')(input_tensor)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.Conv2D(filters, kernel_size, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+
+    # Residual connection
+    residual = input_tensor + x
+    output = tf.keras.layers.ReLU()(residual)
+    return output
+
+def get_resnet_classifier(input_shape, num_classes):
+    # Input layer
+    inputs = tf.keras.Input(shape=input_shape)
+
+    # First convolutional layer
+    x = tf.keras.layers.Conv2D(64, 3, padding='same')(inputs)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
+
+    # Residual blocks
+    x = residual_block(x, 64, 3)
+    x = residual_block(x, 64, 3)
+    x = residual_block(x, 64, 3)
+
+    # Global average pooling
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+
+    # Output layer
+    outputs = tf.keras.layers.Dense(num_classes, activation='softmax')(x)
+
+    # Create the model
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name=RESNET_CLASSIFIER)
+    return model
