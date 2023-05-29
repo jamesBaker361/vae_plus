@@ -21,6 +21,13 @@ Z_MEAN='z_mean'
 Z_LOG_VAR='z_log_var'
 RESNET_CLASSIFIER='resnet_classifier'
 
+class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
+    def call(self, inputs):
+        max_values = tf.reduce_max(inputs, axis=-1, keepdims=True)
+        subtracted_values = tf.subtract(inputs, max_values)
+        softmax_output = tf.nn.softmax(subtracted_values, axis=-1)
+        return softmax_output
+
 def sampling(args):
     z_mean, z_log_var,latent_dim = args
     epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim), mean=0., stddev=1.)
@@ -174,7 +181,8 @@ def get_classification_head(latent_dim,n_classes):
     x=Dense(latent_dim//4)(inputs)
     x=tf.keras.layers.LeakyReLU()(x)
     x=Dropout(0.2)(x)
-    x=Dense(n_classes, activation='softmax')(x)
+    x=Dense(n_classes)(x)
+    x=SoftmaxWithMaxSubtraction()(x)
     return Model(inputs, x,name=CLASSIFICATION_HEAD)
 
 def get_classifier_model(latent_dim,input_shape,n_classes):
