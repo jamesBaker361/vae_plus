@@ -220,7 +220,7 @@ def residual_block(input_tensor, filters, kernel_size):
     output = tf.keras.layers.ReLU()(residual)
     return output
 
-def get_resnet_classifier(input_shape, num_classes):
+def get_resnet_classifier(input_shape, n_classes):
     # Input layer
     inputs = tf.keras.Input(shape=input_shape)
 
@@ -238,7 +238,7 @@ def get_resnet_classifier(input_shape, num_classes):
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
 
     # Output layer
-    outputs = tf.keras.layers.Dense(num_classes, activation='softmax')(x)
+    outputs = tf.keras.layers.Dense(n_classes, activation='softmax')(x)
 
     # Create the model
     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=RESNET_CLASSIFIER)
