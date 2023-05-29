@@ -17,14 +17,14 @@ def get_random_crop(image_dim):
 def get_normalize(image_dim,method):
     def normalize(image):
         image = tf.cast(image, tf.float32)
-        image = (image / 127.5) - 1
+        image = (image / 255)
         image = tf.image.resize(image, [image_dim, image_dim],
                                 method=method)
         return image
     return normalize
 
 def denormalize(norm_image):
-    return np.uint8(127.5*norm_image+127.5)
+    return np.uint8(255*norm_image)
     
 
 def get_random_jitter(image_dim):
