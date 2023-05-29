@@ -60,6 +60,27 @@ def YvaeClassifierSavingCallbackTest(
     callback(1)
     classifier_model=tf.saved_model.load(saved_model_folder+"classifier_model")
 
+
+def YvaeClassifierResNetSavingCallbackTest(
+        input_shape=(64,64,3),
+        latent_dim=10,
+        n_classes=2,
+        epochs=2,
+        saved_model_folder='../../../../../scratch/jlb638/yvae_models/yvae/unit_testing/'):
+    dataset_names=["jlbaker361/flickr_humans_mini", "jlbaker361/anime_faces_mini"]
+    n_classes=len(dataset_names)
+    optimizer=keras.optimizers.Adam(learning_rate=0.0001)
+    resnet_classifier=get_resnet_classifier(input_shape,n_classes)
+    batch_size=4
+    
+    dataset=yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names,image_dim=input_shape[1])
+    test_dataset=yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names,image_dim=input_shape[1])
+    trainer=YVAE_Classifier_Trainer(resnet_classifier, epochs, optimizer, dataset, test_dataset=test_dataset,log_dir=LOG_DIR)
+    callback=YvaeClassifierSavingCallback(trainer,saved_model_folder,1,1,model_name=RESNET_CLASSIFIER)
+    callback(1)
+    resnet_classifier=tf.saved_model.load(saved_model_folder+RESNET_CLASSIFIER)
+    resnet_classifier(tf.random.normal((1,*input_shape)))
+
 def YvaeUnitSavingCallback_test(
         input_shape=(64,64,3),
         latent_dim=10,
@@ -96,4 +117,5 @@ if __name__=='__main__':
         YvaeImageGenerationCallback_test(input_shape=input_shape)
         YvaeSavingCallback_test(input_shape=input_shape)
         YvaeUnitSavingCallback_test(input_shape=input_shape)
+        YvaeClassifierResNetSavingCallbackTest(input_shape=input_shape)
     print("all done :)")

@@ -26,6 +26,7 @@ parser.add_argument("--interval",type=int,default=10,help='save model every inte
 parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for when to start saving')
 parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for encoding')
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
+parser.add_argument("--resnet",type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -63,13 +64,18 @@ def objective(trial, args):
 
             print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch),flush=True)
         else:
-            classifier_model = get_classifier_model(args.latent_dim,input_shape,n_classes)
+            if args.resnet:
+                classifier_model=get_resnet_classifier(input_shape, n_classes)
+                model_name=CLASSIFIER_MODEL
+            else:
+                classifier_model = get_classifier_model(args.latent_dim,input_shape,n_classes)
+                model_name=RESNET_CLASSIFIER
     
     dataset=yvae_get_labeled_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
     test_dataset=yvae_get_labeled_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
     trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset, test_dataset=test_dataset,log_dir=log_dir,mirrored_strategy=mirrored_strategy,start_epoch=start_epoch)
     if args.save:
-        trainer.callbacks=[YvaeClassifierSavingCallback(trainer, save_model_folder, args.threshold, args.interval)]
+        trainer.callbacks=[YvaeClassifierSavingCallback(trainer, save_model_folder, args.threshold, args.interval,model_name=model_name)]
     print("begin loop :O")
     trainer.train_loop()
 

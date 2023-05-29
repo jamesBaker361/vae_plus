@@ -78,15 +78,16 @@ class YvaeSavingCallback:
                 outfile.write(json_object)
 
 class YvaeClassifierSavingCallback:
-    def __init__(self,trainer,save_model_folder,threshold,interval):
+    def __init__(self,trainer,save_model_folder,threshold,interval,model_name=CLASSIFIER_MODEL):
         self.classifier_model=trainer.classifier_model
         self.save_model_folder=save_model_folder
         self.threshold=threshold
         self.interval=interval
+        self.model_name=model_name
 
     def __call__(self,epoch):
         if epoch % self.interval ==0 and epoch>=self.threshold:
-            self.classifier_model.save(self.save_model_folder+CLASSIFIER_MODEL)
+            self.classifier_model.save(self.save_model_folder+self.model_name)
             print('saved at location {} epoch {}'.format(self.save_model_folder, epoch),flush=True)
             meta_data = {"epoch":epoch}
             json_object = json.dumps(meta_data, indent=4)
