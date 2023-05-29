@@ -35,15 +35,19 @@ class SamplingLayer(keras.layers.Layer):
 
 
 def get_encoder(inputs, latent_dim):
-    x = Conv2D(32, (3, 3), padding='same', activation='relu',name=ENCODER_CONV_NAME.format(0))(inputs)
-    x = Conv2D(32, (3, 3), padding='same', activation='relu',name=ENCODER_CONV_NAME.format(1))(x)
+    x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(0))(inputs)
+    x=tf.keras.layers.LeakyReLU()(x)
+    x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(1))(x)
+    x=tf.keras.layers.LeakyReLU()(x)
     x = BatchNormalization(name=ENCODER_BN_NAME.format(0))(x)
     count=2
     bn_count=1
     for dim in [64, 128,256, 512]:
-        x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same', activation='relu',name=ENCODER_CONV_NAME.format(count))(x)
+        x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same',name=ENCODER_CONV_NAME.format(count))(x)
+        x=tf.keras.layers.LeakyReLU()(x)
         count+=1
-        x = Conv2D(dim, (3, 3), padding='same', activation='relu',name=ENCODER_CONV_NAME.format(count))(x)
+        x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
+        x=tf.keras.layers.LeakyReLU()(x)
         count+=1
         x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         bn_count+=1
@@ -120,40 +124,55 @@ def get_decoder(latent_dim, image_dim,n=0):
     decoder1_inputs = Input(shape=(latent_dim,))
 
     # Decoder 1
-    x = Dense(4*4*512, activation='relu')(decoder1_inputs)
+    x = Dense(4*4*512)(decoder1_inputs)
+    x=tf.keras.layers.LeakyReLU()(x)
     x = Reshape((4, 4, 512))(x)
-    x = Conv2DTranspose(256, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-    x = Conv2D(256, (3, 3), padding='same', activation='relu')(x)
+    x = Conv2DTranspose(256, (3, 3), strides=(2, 2), padding='same')(x)
+    x = Conv2D(256, (3, 3), padding='same')(x)
+    x=tf.keras.layers.LeakyReLU()(x)
     x = BatchNormalization()(x)
-    x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-    x = Conv2D(128, (3, 3), padding='same', activation='relu')(x)
+    x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)
+    x=tf.keras.layers.LeakyReLU()(x)
+    x = Conv2D(128, (3, 3), padding='same')(x)
+    x=tf.keras.layers.LeakyReLU()(x)
     x = BatchNormalization()(x)
-    x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-    x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
+    x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
+    x=tf.keras.layers.LeakyReLU()(x)
+    x = Conv2D(64, (3, 3), padding='same')(x)
+    x=tf.keras.layers.LeakyReLU()(x)
     x = BatchNormalization()(x)
     if image_dim > 32:
-        x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-        x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
+        x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
+        x=tf.keras.layers.LeakyReLU()(x)
+        x = Conv2D(64, (3, 3), padding='same')(x)
+        x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization()(x)
     if image_dim > 64:
-        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-        x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
+        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
+        x=tf.keras.layers.LeakyReLU()(x)
+        x = Conv2D(32, (3, 3), padding='same')(x)
+        x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization()(x)
     if image_dim > 128:
-        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-        x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
+        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
+        x=tf.keras.layers.LeakyReLU()(x)
+        x = Conv2D(32, (3, 3), padding='same')(x)
+        x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization()(x)
     if image_dim > 256:
-        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-        x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
+        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
+        x=tf.keras.layers.LeakyReLU()(x)
+        x = Conv2D(32, (3, 3), padding='same')(x)
+        x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization()(x)
     decoder1_outputs = Conv2D(3, (3, 3), activation='tanh', padding='same')(x)
     return Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
 
 def get_classification_head(latent_dim,n_classes):
     inputs = Input(shape=(latent_dim,))
-    x=Dense(latent_dim//4,activation='relu')(inputs)
-    x=Dropout(0.1)(x)
+    x=Dense(latent_dim//4)(inputs)
+    x=tf.keras.layers.LeakyReLU()(x)
+    x=Dropout(0.2)(x)
     x=Dense(n_classes, activation='softmax')(x)
     return Model(inputs, x,name=CLASSIFICATION_HEAD)
 

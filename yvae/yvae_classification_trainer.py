@@ -6,6 +6,7 @@ import time
 
 TEST_INTERVAL=10
 EPSILON= 1e-8
+import random
 
 class YVAE_Classifier_Trainer:
     def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[]):
@@ -49,6 +50,11 @@ class YVAE_Classifier_Trainer:
         (imgs,labels)=batch
         predictions=self.classifier_model(imgs)
         loss=self.loss_function(labels, predictions)
+        if random.randint(0,20)==13:
+            print('unlucky number :(')
+            print('label', labels)
+            print('predictions', predictions)
+            print('loss', loss)
         self.test_loss(loss)
         return loss
     
@@ -84,9 +90,12 @@ class YVAE_Classifier_Trainer:
             (imgs,labels)=next(iter(self.test_dataset))
             predictions=self.classifier_model(imgs) + EPSILON
             loss=self.loss_function(labels,predictions)
+            print('loss', loss)
             print('predictions:',predictions)
             print('labels', labels)
             print('shape', tf.shape(imgs))
+            loss=self.loss_function(labels,predictions)
+            print('loss', loss)
             img=imgs[0]
             plt.title('pred: {} label: {}'.format(predictions[0], labels[0]))
             plt.imshow(denormalize(img))
