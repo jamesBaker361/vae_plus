@@ -54,11 +54,16 @@ def objective(trial, args):
 
     mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus, cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
 
+    if args.resnet:
+        model_name=RESNET_CLASSIFIER
+    else:
+        model_name=CLASSIFIER_MODEL
+
     with mirrored_strategy.scope():
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
         #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
-            classifier_model=tf.keras.models.load_model(save_model_folder+"classifier_model")
+            classifier_model=tf.keras.models.load_model(save_model_folder+model_name)
             with open(save_model_folder+"/meta_data.json","r") as src_file:
                 start_epoch=json.load(src_file)["epoch"]
 
@@ -66,10 +71,8 @@ def objective(trial, args):
         else:
             if args.resnet:
                 classifier_model=get_resnet_classifier(input_shape, n_classes)
-                model_name=CLASSIFIER_MODEL
             else:
                 classifier_model = get_classifier_model(args.latent_dim,input_shape,n_classes)
-                model_name=RESNET_CLASSIFIER
     
     dataset=yvae_get_labeled_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
     test_dataset=yvae_get_labeled_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)

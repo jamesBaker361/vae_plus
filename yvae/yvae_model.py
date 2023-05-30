@@ -173,7 +173,7 @@ def get_decoder(latent_dim, image_dim,n=0):
         x = Conv2D(32, (3, 3), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization()(x)
-    decoder1_outputs = Conv2D(3, (3, 3), activation='tanh', padding='same')(x)
+    decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
     return Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
 
 def get_classification_head(latent_dim,n_classes):
