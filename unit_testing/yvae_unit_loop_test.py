@@ -7,7 +7,7 @@ from yvae_callbacks import *
 from yvae_data_helper import *
 from yvae_unit_loop import *
 
-def objective_test(image_dim):
+def objective_unit_test(image_dim):
     args.load=False
     args.save=False
     args.epochs=2
@@ -17,7 +17,7 @@ def objective_test(image_dim):
     args.image_dim=image_dim
     objective_unit(None,args)
 
-def objective_test_save(image_dim):
+def objective_unit_test_save(image_dim):
     args.load=False
     args.save=True
     args.epochs=3
@@ -30,8 +30,8 @@ def objective_test_save(image_dim):
     objective_unit(None,args)
 
 
-def obective_test_load(image_dim):
-    objective_test_save(image_dim)
+def obective_unit_test_load(image_dim):
+    objective_unit_test_save(image_dim)
     args.load=True
     args.save=False
     args.epochs=5
@@ -41,6 +41,6 @@ def obective_test_load(image_dim):
 
 if __name__=='__main__':
     for dim in [64,128,256]:
-        objective_test(dim)
-        objective_test_save(dim)
-        obective_test_load(dim)
+        objective_unit_test(dim)
+        objective_unit_test_save(dim)
+        obective_unit_test_load(dim)

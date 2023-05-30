@@ -118,11 +118,12 @@ class VAE_Trainer:
                         total_loss=self.distributed_train_step(batch,vae)
                     
             #print([ep.numpy() for ep in epoch_losses])
-            print('epoch {} loss: {}'.format(e,self.train_loss.result()))
+            #print('epoch {} loss: {}'.format(e,self.train_loss.result()))
             print ('\nTime taken for epoch {} is {} sec\n'.format(e,time.time()-start))
             with self.summary_writer.as_default():
                 for name,metric in self.train_metrics.items():
                     tf.summary.scalar(name, metric.result(), step=e)
+                    print("\t {} : {}".format(name, metric.result()))
             for callback in self.callbacks:
                 callback(e)
             if e%TEST_INTERVAL==0:
@@ -157,7 +158,7 @@ class VAE_Unit_Trainer(VAE_Trainer):
 
 class VAE_Creativity_Trainer(VAE_Trainer):
     def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=None, creativity_lambda=1.0,n_classes=2):
-        super().__init__(vae_list,epochs,dataset_dict={},test_dataset_dict={},optimizer=optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
+        super().__init__(vae_list,epochs,dataset_dict=dataset_dict,test_dataset_dict=test_dataset_dict,optimizer=optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
         self.dataset_list=[dataset_list] #should be a list of images and shit from all classes
         self.creativity_lambda=creativity_lambda
         self.pretrained_classifier=pretrained_classifier

@@ -8,21 +8,24 @@ from processing_utils import *
 from yvae_model import *
 
 class YvaeImageGenerationCallback:
-    def __init__(self, yvae_trainer,test_dataset_dict,image_output_dir,batch_size):
+    def __init__(self, yvae_trainer,test_dataset_dict,image_output_dir,batch_size,enable_style_transfer=True):
         self.yvae_trainer=yvae_trainer
         self.test_dataset_dict=test_dataset_dict
         self.image_output_dir=image_output_dir
-        self.sample={
-            key: next(iter(value)) for key,value in test_dataset_dict.items()
-        }
+        if enable_style_transfer:
+            self.sample={
+                key: next(iter(value)) for key,value in test_dataset_dict.items()
+            }
+        self.enable_style_transfer=enable_style_transfer
         self.batch_size=batch_size
 
     def __call__(self, epoch):
-        self.style_transfer(self.sample, '{}/test_{}.png'.format(self.image_output_dir, epoch))
-        random_sample={
-            key: next(iter(value)) for key,value in self.test_dataset_dict.items()
-        }
-        self.style_transfer(random_sample,'{}/random_test_{}.png'.format(self.image_output_dir, epoch))
+        if self.enable_style_transfer:
+            self.style_transfer(self.sample, '{}/test_{}.png'.format(self.image_output_dir, epoch))
+            random_sample={
+                key: next(iter(value)) for key,value in self.test_dataset_dict.items()
+            }
+            self.style_transfer(random_sample,'{}/random_test_{}.png'.format(self.image_output_dir, epoch))
         self.generate_images('{}/gen_{}.png'.format(self.image_output_dir, epoch))
 
     def style_transfer(self,data,path):
