@@ -48,7 +48,8 @@ class YVAE_Classifier_Trainer:
         (imgs,labels)=batch
         predictions=self.classifier_model(imgs)
         loss=self.loss_function(labels, predictions)
-        if random.randint(0,20)==13:
+        if random.randint(0,20) % 13==0:
+            pass
             print('unlucky number :(')
             print('label', labels)
             print('predictions', predictions)
@@ -58,6 +59,8 @@ class YVAE_Classifier_Trainer:
                 print(layer.name)
                 print(x[0])
                 x=layer(x)
+                if layer.name==ENCODER_NAME:
+                    x=x[-1]
         self.test_loss(loss)
         return loss
     

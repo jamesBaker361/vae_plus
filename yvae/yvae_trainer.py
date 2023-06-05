@@ -34,7 +34,7 @@ def get_compute_creativity_loss(reconstruction_loss_function, creativity_lambda,
     return _compute_creativity_loss
 
 class VAE_Trainer:
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale,callbacks=[],start_epoch=0):
         self.vae_list=vae_list
         self.decoders=[vae_list[i].get_layer(DECODER_NAME.format(i)) for i in range(len(vae_list))]
         self.epochs=epochs
@@ -57,6 +57,8 @@ class VAE_Trainer:
                 self.test_reconstruction_loss= tf.keras.metrics.Mean(TEST_RECONSTRUCTION_LOSS, dtype=tf.float32)
                 self.summary_writer = tf.summary.create_file_writer(log_dir)
                 self.compute_kl_loss=get_compute_kl_loss(kl_loss_scale, global_batch_size)
+                self.total_loss=None
+                
         else:
             self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
             self.train_loss = tf.keras.metrics.Mean(TRAIN_LOSS, dtype=tf.float32)
@@ -65,6 +67,7 @@ class VAE_Trainer:
             self.test_reconstruction_loss= tf.keras.metrics.Mean(TEST_RECONSTRUCTION_LOSS, dtype=tf.float32)
             self.summary_writer = tf.summary.create_file_writer(log_dir)
             self.compute_kl_loss=get_compute_kl_loss(kl_loss_scale, global_batch_size)
+            self.total_loss=None
         self.train_metrics={
             TRAIN_LOSS:self.train_loss,
             TRAIN_RECONSTRUCTION_LOSS:self.train_reconstruction_loss
@@ -74,16 +77,17 @@ class VAE_Trainer:
             TEST_RECONSTRUCTION_LOSS: self.test_reconstruction_loss
         }
 
+    @tf.function
     def train_step(self,batch,vae):
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)
-            reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction) #yes this is redundant whoops
-            total_loss=self.compute_kl_loss(z_mean,z_log_var) +reconstruction_loss
-        grads = tape.gradient(total_loss, vae.trainable_weights)
+            reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
+            _total_loss=self.compute_kl_loss(z_mean,z_log_var) +reconstruction_loss
+        grads = tape.gradient(_total_loss, vae.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, vae.trainable_weights))
-        self.train_loss(total_loss)
+        self.train_loss(_total_loss)
         self.train_reconstruction_loss(reconstruction_loss)
-        return total_loss
+        return _total_loss
     
     @tf.function
     def distributed_train_step(self,batch,vae):
@@ -97,6 +101,7 @@ class VAE_Trainer:
         return self.mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
                                 axis=None)
     
+    @tf.function
     def test_step(self,batch,vae):
         [reconstruction,z_mean, z_log_var]=vae(batch)
         reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
@@ -149,14 +154,37 @@ class VAE_Trainer:
         return [decoder(noise) for decoder in self.decoders]
 
 class VAE_Unit_Trainer(VAE_Trainer):
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0):
-        super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4):
+        super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
         self.partials=[vae_list[i].get_layer(ENCODER_STEM_NAME.format(i)).get_layer(PARTIAL_ENCODER_NAME.format(i)) for i in range(len(vae_list))]
 
+class YVAE_Trainer(VAE_Trainer):
+    def __init__(self,y_vae_list,epochs,dataset_dict, test_dataset_dict,optimizer,reconstruction_loss_function_name='mse',log_dir='', mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4):
+        super().__init__(y_vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
+        self.encoder=y_vae_list[0].get_layer(ENCODER_NAME)
+        if mirrored_strategy is not None:
+            with mirrored_strategy.scope():
+                if reconstruction_loss_function_name == 'binary_crossentropy':
+                    self.reconstruction_loss_function=tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
+                elif reconstruction_loss_function_name == 'mse':
+                    self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+                elif reconstruction_loss_function_name == 'log_cosh':
+                    self.reconstruction_loss_function=tf.keras.losses.LogCosh(reduction=tf.keras.losses.Reduction.NONE)
+                elif reconstruction_loss_function_name == 'huber':
+                    self.reconstruction_loss_function=tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.NONE)
+        else:
+            if reconstruction_loss_function_name == 'binary_crossentropy':
+                self.reconstruction_loss_function=tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
+            elif reconstruction_loss_function_name == 'mse':
+                self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+            elif reconstruction_loss_function_name == 'log_cosh':
+                self.reconstruction_loss_function=tf.keras.losses.LogCosh(reduction=tf.keras.losses.Reduction.NONE)
+            elif reconstruction_loss_function_name == 'huber':
+                self.reconstruction_loss_function=tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.NONE)
 
-class VAE_Creativity_Trainer(VAE_Trainer):
+class VAE_Creativity_Trainer(YVAE_Trainer):
     def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=None, creativity_lambda=1.0,n_classes=2):
         super().__init__(vae_list,epochs,dataset_dict=dataset_dict,test_dataset_dict=test_dataset_dict,optimizer=optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
         self.dataset_list=[dataset_list] #should be a list of images and shit from all classes
@@ -207,28 +235,3 @@ class VAE_Creativity_Trainer(VAE_Trainer):
         self.train_reconstruction_loss(reconstruction_loss)
         self.train_creativity_loss(creativity_loss)
         return total_loss
-    
-
-class YVAE_Trainer(VAE_Trainer):
-    def __init__(self,y_vae_list,epochs,dataset_dict, test_dataset_dict,optimizer,reconstruction_loss_function_name='mse',log_dir='', mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4):
-        super().__init__(y_vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
-        self.encoder=y_vae_list[0].get_layer('encoder')
-        if mirrored_strategy is not None:
-            with mirrored_strategy.scope():
-                if reconstruction_loss_function_name == 'binary_crossentropy':
-                    self.reconstruction_loss_function=tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
-                elif reconstruction_loss_function_name == 'mse':
-                    self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
-                elif reconstruction_loss_function_name == 'log_cosh':
-                    self.reconstruction_loss_function=tf.keras.losses.LogCosh(reduction=tf.keras.losses.Reduction.NONE)
-                elif reconstruction_loss_function_name == 'huber':
-                    self.reconstruction_loss_function=tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.NONE)
-        else:
-            if reconstruction_loss_function_name == 'binary_crossentropy':
-                self.reconstruction_loss_function=tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
-            elif reconstruction_loss_function_name == 'mse':
-                self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
-            elif reconstruction_loss_function_name == 'log_cosh':
-                self.reconstruction_loss_function=tf.keras.losses.LogCosh(reduction=tf.keras.losses.Reduction.NONE)
-            elif reconstruction_loss_function_name == 'huber':
-                self.reconstruction_loss_function=tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.NONE)

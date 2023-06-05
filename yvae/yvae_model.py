@@ -54,9 +54,9 @@ def get_encoder(inputs, latent_dim):
         x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same',name=ENCODER_CONV_NAME.format(count))(x)
         x=tf.keras.layers.LeakyReLU()(x)
         count+=1
-        x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
-        x=tf.keras.layers.LeakyReLU()(x)
-        count+=1
+        #x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
+        #x=tf.keras.layers.LeakyReLU()(x)
+        #count+=1
         x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         bn_count+=1
     x = Flatten(name="flatten")(x)
@@ -106,6 +106,13 @@ def get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name):
     decoders=[get_decoder(latent_dim, input_shape[1],n) for n in range(n_classes)]
     return compile_unit_list(encoders,decoders)
 
+def build_unit_list_testing(input_shape,latent_dim,n_classes,start_name):
+    inputs=inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
+    pretrained_encoder=get_encoder(inputs, latent_dim)
+    shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
+    return unit_list
+
 def load_unit_list(shared_partial, decoders, partials):
     encoders=[]
     for n in range(len(decoders)):
@@ -132,11 +139,11 @@ def get_decoder(latent_dim, image_dim,n=0):
     decoder1_inputs = Input(shape=(latent_dim,))
 
     # Decoder 1
-    x = Dense(4*4*512)(decoder1_inputs)
+    x = Dense(4*4*128)(decoder1_inputs)
     x=tf.keras.layers.LeakyReLU()(x)
-    x = Reshape((4, 4, 512))(x)
-    x = Conv2DTranspose(256, (3, 3), strides=(2, 2), padding='same')(x)
-    x = Conv2D(256, (3, 3), padding='same')(x)
+    x = Reshape((4, 4, 128))(x)
+    x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)
+    x = Conv2D(128, (3, 3), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)

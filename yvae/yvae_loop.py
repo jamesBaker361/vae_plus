@@ -1,4 +1,6 @@
+os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 import tensorflow as tf
+tf.config.optimizer.set_jit(True)
 from yvae_data_helper import *
 from yvae_model import *
 from yvae_trainer import *
@@ -79,8 +81,7 @@ def objective(trial,args):
 
     dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
     test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
-    strategy=mirrored_strategy
-    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name=args.reconstruction_loss_function_name,log_dir=log_dir,mirrored_strategy=strategy,start_epoch=start_epoch,kl_loss_scale=args.kl_loss_scale,global_batch_size=GLOBAL_BATCH_SIZE)
+    trainer=YVAE_Trainer(y_vae_list, args.epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name=args.reconstruction_loss_function_name,log_dir=log_dir,mirrored_strategy=mirrored_strategy,start_epoch=start_epoch,kl_loss_scale=args.kl_loss_scale,global_batch_size=GLOBAL_BATCH_SIZE)
     callbacks=[
         YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3)
     ]
