@@ -1,3 +1,4 @@
+import os
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 import tensorflow as tf
 tf.config.optimizer.set_jit(True)
@@ -9,7 +10,6 @@ from yvae_callbacks import *
 from yvae_classification_trainer import *
 import argparse
 from datetime import datetime, timezone
-import os
 from random import randrange
 import json
 

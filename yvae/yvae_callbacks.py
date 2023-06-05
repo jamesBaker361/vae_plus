@@ -91,7 +91,7 @@ class YvaeClassifierSavingCallback:
     def __call__(self,epoch):
         if epoch % self.interval ==0 and epoch>=self.threshold:
             self.classifier_model.save(self.save_model_folder+self.model_name)
-            print('saved at location {} epoch {}'.format(self.save_model_folder, epoch),flush=True)
+            print('saved at location {} epoch {}'.format(self.save_model_folder+self.model_name, epoch),flush=True)
             meta_data = {"epoch":epoch}
             json_object = json.dumps(meta_data, indent=4)
  
