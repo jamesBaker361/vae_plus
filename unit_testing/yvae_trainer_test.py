@@ -1,10 +1,12 @@
 import sys
 sys.path.append('yvae')
+import os
 
 
 from yvae_trainer import *
 from yvae_data_helper import *
 LOG_DIR='logs/yvae_trainer_unit_testing/'
+os.makedirs(LOG_DIR, exist_ok=True)
 
 def YVAE_Trainer_test(
     input_shape=(32,32,3),
@@ -51,9 +53,13 @@ def VAE_Trainer_Unit_test(input_shape=(32,32,3),
     start_name='encoder_conv_4',
     epochs=1):
     inputs = Input(shape=input_shape, name='encoder_input')
+    print('54')
     pretrained_encoder=get_encoder(inputs, latent_dim)
+    print('56')
     shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
+    print('57')
     unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
+    print('60')
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
@@ -62,6 +68,7 @@ def VAE_Trainer_Unit_test(input_shape=(32,32,3),
     start_epoch=0
     trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,
                         mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
+    print('69 nice')
     trainer.train_loop()
 
 def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
@@ -81,6 +88,31 @@ def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
     start_epoch=0
     trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
     trainer.generate_images(2)
+
+def VAE_Trainer_Unit_style_transfer_test(input_shape=(32,32,3),
+    latent_dim=10,
+    n_classes=3,
+    start_name='encoder_conv_2',
+    epochs=1):
+    print('97')
+    inputs = Input(shape=input_shape, name='encoder_input')
+    pretrained_encoder=get_encoder(inputs, latent_dim)
+    shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
+    print('105')
+    kl_loss_scale=1.0
+    callbacks=[]
+    start_epoch=0
+    trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
+    print('108')
+    imgs=tf.random.normal((4,*input_shape))
+    transferred= trainer.style_transfer(imgs)
+    print('111')
+    for t in transferred:
+        print(tf.shape(t))
 
 def VAE_Creativity_Trainer_test(input_shape=(32,32,3),
                                 latent_dim=10,
@@ -105,10 +137,17 @@ if __name__ =='__main__':
         shape=(img_dim, img_dim, 3)
         print(shape)
         YVAE_Trainer_test(input_shape=shape)
+        print('129')
         YVAE_Trainer_generate_images_test(input_shape=shape)
+        print('131')
         VAE_Trainer_Unit_test(input_shape=shape)
+        print('133')
         VAE_Trainer_Unit_generate_imgs_test(input_shape=shape)
+        print('135')
         VAE_Creativity_Trainer_test(input_shape=shape)
+        print('137')
+        VAE_Trainer_Unit_style_transfer_test(input_shape=shape)
+        print("kjadsfjfka")
     for loss in ['mse', 'binary_crossentropy', 'log_cosh','huber']:
         YVAE_Trainer_test_reconstruction(reconstruction_loss_function_name=loss)
     print("all done! :)")

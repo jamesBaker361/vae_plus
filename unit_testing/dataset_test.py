@@ -20,7 +20,7 @@ def prod_dataset_test(image_dim=128):
     dataset_names=["jlbaker361/flickr_humans_10k" ,"jlbaker361/anime_faces_10k", "jlbaker361/artfaces_padded"]
     dataset_names_medium=["jlbaker361/flickr_humans_20k" ,"jlbaker361/anime_faces_20k", "jlbaker361/artfaces_padded"]
     dataset_names_big=["jlbaker361/flickr_humans" ,"jlbaker361/anime_faces_50k", "jlbaker361/artfaces_padded"]
-    for names in [dataset_names, dataset_names_medium, dataset_names_big]:
+    for names in [dataset_names, dataset_names_medium, dataset_names_big, dataset_names_tiny]:
         yvae_creativity_get_dataset_train(batch_size=batch_size,dataset_names=names,image_dim=image_dim,mirrored_strategy=None)
         yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=names,image_dim=image_dim)
         yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=names, image_dim=image_dim)

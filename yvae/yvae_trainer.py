@@ -77,7 +77,7 @@ class VAE_Trainer:
             TEST_RECONSTRUCTION_LOSS: self.test_reconstruction_loss
         }
 
-    @tf.function
+    #@tf.function
     def train_step(self,batch,vae):
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)
@@ -101,7 +101,7 @@ class VAE_Trainer:
         return self.mirrored_strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
                                 axis=None)
     
-    @tf.function
+    #@tf.function
     def test_step(self,batch,vae):
         [reconstruction,z_mean, z_log_var]=vae(batch)
         reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
@@ -111,9 +111,9 @@ class VAE_Trainer:
         return total_loss
 
     def train_loop(self):
+        print('train loop begin')
         for e in range(self.start_epoch,self.epochs):
             start = time.time()
-            epoch_losses=[0 for _ in self.dataset_list]
             for d,dataset in enumerate(self.dataset_list):
                 vae=self.vae_list[d]
                 for batch in dataset:
@@ -145,6 +145,7 @@ class VAE_Trainer:
                 with self.summary_writer.as_default():
                     for name,metric in self.test_metrics.items():
                         tf.summary.scalar(name, metric.result(), step=e)
+                print('test step done')
     
     
     def generate_images(self,batch_size):
@@ -159,6 +160,16 @@ class VAE_Unit_Trainer(VAE_Trainer):
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
         self.partials=[vae_list[i].get_layer(ENCODER_STEM_NAME.format(i)).get_layer(PARTIAL_ENCODER_NAME.format(i)) for i in range(len(vae_list))]
+
+    def style_transfer(self,img,n):
+        encoder=self.vae_list[n].get_layer(ENCODER_STEM_NAME.format(n))
+        [latents,_,__]=encoder(img)
+        ret=[]
+        for i,decoder in enumerate(self.decoders):
+            if i==n:
+                continue
+            ret.append(decoder(latents))
+        return ret
 
 class YVAE_Trainer(VAE_Trainer):
     def __init__(self,y_vae_list,epochs,dataset_dict, test_dataset_dict,optimizer,reconstruction_loss_function_name='mse',log_dir='', mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4):

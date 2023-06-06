@@ -1,7 +1,7 @@
 import os
-os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
+#os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 import tensorflow as tf
-tf.config.optimizer.set_jit(True)
+#tf.config.optimizer.set_jit(True)
 #from tensorflow_examples.models.pix2pix import pix2pix
 from yvae_data_helper import *
 from yvae_model import *

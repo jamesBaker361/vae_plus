@@ -48,9 +48,11 @@ def get_encoder(inputs, latent_dim):
     x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(1))(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = BatchNormalization(name=ENCODER_BN_NAME.format(0))(x)
+    print('model 51')
     count=2
     bn_count=1
-    for dim in [64, 128,256, 512]:
+    for dim in [64, 128,256, 256]:
+        print(dim)
         x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same',name=ENCODER_CONV_NAME.format(count))(x)
         x=tf.keras.layers.LeakyReLU()(x)
         count+=1
