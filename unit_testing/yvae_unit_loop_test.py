@@ -15,10 +15,10 @@ from yvae_unit_loop import *
 def objective_unit_test(image_dim):
     args.load=False
     args.save=False
-    args.epochs=2
+    args.epochs=5
     args.dataset_names=["jlbaker361/flickr_humans_mini", "jlbaker361/anime_faces_mini"]
     args.batch_size=4
-    args.name='unit_unit_testing_{}'.format(image_dim)
+    args.name='unit_unit_testing_dont_save_{}'.format(image_dim)
     args.image_dim=image_dim
     objective_unit(None,args)
 

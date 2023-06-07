@@ -20,7 +20,15 @@ class YVAE_Classifier_Trainer:
         self.mirrored_strategy=mirrored_strategy
         self.log_dir=log_dir
         self.summary_writer = tf.summary.create_file_writer(log_dir)
-        self.reset_metrics()
+        if self.mirrored_strategy is not None:
+            with self.mirrored_strategy.scope():
+                self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
+                self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
+                self.test_loss= tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
+        else:
+            self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
+            self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
+            self.test_loss= tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
         
 
     def reset_metrics(self):
@@ -42,6 +50,12 @@ class YVAE_Classifier_Trainer:
         self.train_loss(loss)
         grads = tape.gradient(loss, self.classifier_model.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.classifier_model.trainable_weights))
+        if False:
+            print('lucky number :(')
+            print('label', labels)
+            print('predictions', predictions)
+            print('loss', loss)
+            print('grad[0]', tf.print(grads[0]))
         return loss
 
     def test_step(self,batch):
@@ -70,7 +84,7 @@ class YVAE_Classifier_Trainer:
 
     def train_loop(self):
         for e in range(self.start_epoch,self.epochs):
-            self.reset_metrics()
+            #self.reset_metrics()
             start = time.time()
             batch_losses=[]
             for batch in self.dataset:

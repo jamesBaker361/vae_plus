@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from yvae_data_helper import *
 
 def load_all_datasets():
-    for num in [5,10,20,30,40,50]:
+    for num in [0.5,5,10,20,30,40,50]:
         flickr="jlbaker361/flickr_humans_{}k".format(num)
         anime="jlbaker361/anime_faces_{}k".format(num)
         load_dataset(flickr, split="train",cache_dir="../../../../../scratch/jlb638/hf_cache")
