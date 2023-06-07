@@ -145,7 +145,6 @@ class VAE_Trainer:
                 with self.summary_writer.as_default():
                     for name,metric in self.test_metrics.items():
                         tf.summary.scalar(name, metric.result(), step=e)
-                print('test step done')
     
     
     def generate_images(self,batch_size):
