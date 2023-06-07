@@ -1,6 +1,10 @@
 import sys
 sys.path.append('yvae')
-
+import os
+os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
+os.environ["XLA_FLAGS"] ="--xla_gpu_cuda_data_dir=/home/jlb638/.conda/envs/fine-tune/lib"
+import tensorflow as tf
+tf.config.optimizer.set_jit(True)
 
 from yvae_trainer import *
 from yvae_callbacks import *

@@ -42,7 +42,10 @@ def objective(trial,args):
     physical_devices= tf.config.list_physical_devices('GPU')
     print("Num physical GPUs Available: ",len(physical_devices))
     for device in physical_devices:
-        tf.config.experimental.set_memory_growth(device, True)
+        try:
+            tf.config.experimental.set_memory_growth(device, True)
+        except:
+            print("could not inititate device")
     
     logical_gpus = tf.config.list_logical_devices('GPU')
     print("Logical GPUs ", len(logical_gpus))

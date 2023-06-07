@@ -102,15 +102,12 @@ def VAE_Trainer_Unit_style_transfer_test(input_shape=(32,32,3),
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
-    print('105')
     kl_loss_scale=1.0
     callbacks=[]
     start_epoch=0
     trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
-    print('108')
     imgs=tf.random.normal((4,*input_shape))
-    transferred= trainer.style_transfer(imgs)
-    print('111')
+    transferred= trainer.style_transfer(imgs,1)
     for t in transferred:
         print(tf.shape(t))
 
