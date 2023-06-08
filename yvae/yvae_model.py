@@ -51,7 +51,7 @@ def get_encoder(inputs, latent_dim):
     print('model 51')
     count=2
     bn_count=1
-    for dim in [64, 128,256, 256]:
+    for dim in [64, 128,128]:
         print(dim)
         x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same',name=ENCODER_CONV_NAME.format(count))(x)
         x=tf.keras.layers.LeakyReLU()(x)
