@@ -9,7 +9,7 @@ EPSILON= 1e-8
 import random
 
 class YVAE_Classifier_Trainer:
-    def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[]):
+    def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[],use_external=False,unfreezing_epoch=-1):
         self.classifier_model=classifier_model
         self.epochs=epochs
         self.start_epoch=start_epoch
@@ -20,6 +20,8 @@ class YVAE_Classifier_Trainer:
         self.mirrored_strategy=mirrored_strategy
         self.log_dir=log_dir
         self.summary_writer = tf.summary.create_file_writer(log_dir)
+        self.use_external=use_external #if we're using an external pretrained model like mobilenet or efficientnet
+        self.unfreezing_epoch=unfreezing_epoch
         if self.mirrored_strategy is not None:
             with self.mirrored_strategy.scope():
                 self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
@@ -29,18 +31,6 @@ class YVAE_Classifier_Trainer:
             self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
             self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
             self.test_loss= tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
-        
-
-    def reset_metrics(self):
-        if self.mirrored_strategy is not None:
-            with self.mirrored_strategy.scope():
-                self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
-                self.train_loss = tf.keras.metrics.Sum('train_loss', dtype=tf.float32)
-                self.test_loss= tf.keras.metrics.Sum('test_loss', dtype=tf.float32)
-        else:
-            self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
-            self.train_loss = tf.keras.metrics.Sum('train_loss', dtype=tf.float32)
-            self.test_loss= tf.keras.metrics.Sum('test_loss', dtype=tf.float32)
 
     def train_step(self,batch):
         with tf.GradientTape() as tape:
@@ -50,12 +40,6 @@ class YVAE_Classifier_Trainer:
         self.train_loss(loss)
         grads = tape.gradient(loss, self.classifier_model.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.classifier_model.trainable_weights))
-        if False:
-            print('lucky number :(')
-            print('label', labels)
-            print('predictions', predictions)
-            print('loss', loss)
-            print('grad[0]', tf.print(grads[0]))
         return loss
 
     def test_step(self,batch):
