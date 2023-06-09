@@ -306,11 +306,27 @@ def get_resnet_classifier(input_shape, n_classes):
     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=RESNET_CLASSIFIER)
     return model
 
-def get_external_classifier(input_shape,name):
+def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim=0):
     mapping={
         MOBILE_NET:tf.keras.applications.MobileNetV3Small,
         EFFICIENT_NET:tf.keras.applications.efficientnet.EfficientNetB0,
         VGG: tf.keras.applications.vgg19.VGG19
     }
-    model=mapping[name]
-    return model(input_shape=input_shape, include_top=False)
+    pretrained_model=mapping[external_name]
+    external= pretrained_model(input_shape=input_shape, include_top=False)
+    model_layers=[
+        external
+    ]
+    if class_latent_dim<1:
+        class_latent_dim=external.output_shape[-1]
+    else:
+        model_layers+=[
+            Dense(class_latent_dim),
+            LeakyReLU(),
+            Dropout(0.2)
+            ]
+    model_layers+=[
+        GlobalAveragePooling2D(),
+        get_classification_head(class_latent_dim, n_classes)
+    ]
+    return tf.keras.Sequential(model_layers,name=CLASSIFIER_MODEL)

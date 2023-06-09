@@ -52,8 +52,8 @@ def get_resnet_classifier_test(input_shape=(32,32,3), n_classes=3):
     resnet_classifier(tf.random.normal((1,*input_shape)))
 
 def get_external_classifier_test(input_shape=(64,64,3)):
-    for name in [MOBILE_NET, EFFICIENT_NET, VGG]:
-        external_classifier=get_external_classifier(input_shape=input_shape,name=name)
+    for external_name in [MOBILE_NET, EFFICIENT_NET, VGG]:
+        external_classifier=get_external_classifier(input_shape=input_shape,external_name=external_name,n_classes=3,class_latent_dim=0)
         external_classifier(tf.random.normal((1,*input_shape)))
 
 

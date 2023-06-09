@@ -30,6 +30,7 @@ parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for 
 parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for encoding')
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--resnet",type=bool, default=False)
+parser.add_argument("--external",type=str,default="",help='if set, whether to use external pretrained model')
 
 args = parser.parse_args()
 
