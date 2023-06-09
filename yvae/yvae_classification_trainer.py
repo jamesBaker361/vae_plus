@@ -4,14 +4,14 @@ import numpy as np
 import tensorflow as tf
 import time
 
-TEST_INTERVAL=10
+TEST_INTERVAL=5
 EPSILON= 1e-8
 import random
 TRAIN_LOSS='train_loss'
 TEST_LOSS='test_loss'
 
 class YVAE_Classifier_Trainer:
-    def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[],use_external=False,unfreezing_epoch=-1):
+    def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[],use_external=False,unfreezing_epoch=-1,unfrozen_optimizer=None):
         self.classifier_model=classifier_model
         self.epochs=epochs
         self.start_epoch=start_epoch
@@ -24,6 +24,7 @@ class YVAE_Classifier_Trainer:
         self.summary_writer = tf.summary.create_file_writer(log_dir)
         self.use_external=use_external #if we're using an external pretrained model like mobilenet or efficientnet
         self.unfreezing_epoch=unfreezing_epoch
+        self.unfrozen_optimizer=unfrozen_optimizer
         if self.mirrored_strategy is not None:
             with self.mirrored_strategy.scope():
                 self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
@@ -71,6 +72,9 @@ class YVAE_Classifier_Trainer:
     def train_loop(self):
         for e in range(self.start_epoch,self.epochs):
             #self.reset_metrics()
+            if self.use_external and  self.unfreezing_epoch<=e:
+                self.optimizer=self.unfrozen_optimizer
+                self.classifier_model.get_layer(EXTERNAL_MODEL).trainable=True
             start = time.time()
             batch_losses=[]
             for batch in self.dataset:

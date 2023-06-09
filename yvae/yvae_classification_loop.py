@@ -30,7 +30,8 @@ parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for 
 parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for encoding')
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--resnet",type=bool, default=False)
-parser.add_argument("--external",type=str,default="",help='if set, whether to use external pretrained model')
+parser.add_argument("--external_name",type=str,default="",help='if set, whether to use external pretrained model')
+parser.add_argument("--unfreezing_epoch",type=int,default=10,help='epoch at which to unfreeze pretrained external model')
 
 args = parser.parse_args()
 
@@ -63,8 +64,15 @@ def objective(trial, args):
     else:
         model_name=CLASSIFIER_MODEL
 
+    if args.external_name in set(EXTERNAL_NAME_LIST):
+        use_external=True
+    else:
+        use_external=False
+
+
     with mirrored_strategy.scope():
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
+        unfrozen_optimizer=keras.optimizers.Adam(learning_rate=0.00001)
         #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
             classifier_model=tf.keras.models.load_model(save_model_folder+model_name)
@@ -75,12 +83,18 @@ def objective(trial, args):
         else:
             if args.resnet:
                 classifier_model=get_resnet_classifier(input_shape, n_classes)
+            elif use_external:
+                print('using external model')
+                classifier_model=get_external_classifier(input_shape,args.external_name,n_classes)
             else:
                 classifier_model = get_classifier_model(args.latent_dim,input_shape,n_classes)
     
     dataset=yvae_get_labeled_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
     test_dataset=yvae_get_labeled_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names,image_dim=args.image_dim)
-    trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset, test_dataset=test_dataset,log_dir=log_dir,mirrored_strategy=mirrored_strategy,start_epoch=start_epoch)
+    trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset, test_dataset=test_dataset,log_dir=log_dir,mirrored_strategy=mirrored_strategy,start_epoch=start_epoch,
+                                    use_external=use_external,
+                                    unfreezing_epoch=args.unfreezing_epoch,
+                                    unfrozen_optimizer=unfrozen_optimizer)
     if args.save:
         trainer.callbacks=[YvaeClassifierSavingCallback(trainer, save_model_folder, args.threshold, args.interval,model_name=model_name)]
     print("begin loop :O")
