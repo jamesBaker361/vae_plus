@@ -7,6 +7,8 @@ import time
 TEST_INTERVAL=10
 EPSILON= 1e-8
 import random
+TRAIN_LOSS='train_loss'
+TEST_LOSS='test_loss'
 
 class YVAE_Classifier_Trainer:
     def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[],use_external=False,unfreezing_epoch=-1):
@@ -25,12 +27,12 @@ class YVAE_Classifier_Trainer:
         if self.mirrored_strategy is not None:
             with self.mirrored_strategy.scope():
                 self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
-                self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
-                self.test_loss= tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
+                self.train_loss = tf.keras.metrics.Mean(TRAIN_LOSS, dtype=tf.float32)
+                self.test_loss= tf.keras.metrics.Mean(TEST_LOSS, dtype=tf.float32)
         else:
             self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
-            self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
-            self.test_loss= tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
+            self.train_loss = tf.keras.metrics.Mean(TRAIN_LOSS, dtype=tf.float32)
+            self.test_loss= tf.keras.metrics.Mean(TEST_LOSS, dtype=tf.float32)
 
     def train_step(self,batch):
         with tf.GradientTape() as tape:
@@ -80,7 +82,7 @@ class YVAE_Classifier_Trainer:
             print('epoch {} loss: {}'.format(e, self.train_loss.result()))
             print ('\nTime taken for epoch {} is {} sec\n'.format(e,time.time()-start))
             with self.summary_writer.as_default():
-                tf.summary.scalar('train_loss', self.train_loss.result(), step=e)
+                tf.summary.scalar(TRAIN_LOSS, self.train_loss.result(), step=e)
             for callback in self.callbacks:
                 callback(e)
             (imgs,labels)=next(iter(self.test_dataset))
@@ -108,5 +110,5 @@ class YVAE_Classifier_Trainer:
                 print('epoch {} test loss: {}'.format(e, self.test_loss.result()))
                 print ('\nTime taken for test epoch {} is {} sec\n'.format(e,time.time()-start))
                 with self.summary_writer.as_default():
-                    tf.summary.scalar('test_loss', self.test_loss.result(), step=e)
+                    tf.summary.scalar(TEST_LOSS, self.test_loss.result(), step=e)
 
