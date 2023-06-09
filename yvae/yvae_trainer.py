@@ -158,7 +158,7 @@ class VAE_Unit_Trainer(VAE_Trainer):
         super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
-        self.partials=[vae_list[i].get_layer(ENCODER_STEM_NAME.format(i)).get_layer(PARTIAL_ENCODER_NAME.format(i)) for i in range(len(vae_list))]
+        self.partials=[vae_list[i].get_layer(ENCODER_STEM_NAME.format(i)).get_layer(UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(len(vae_list))]
 
     def style_transfer(self,img,n):
         encoder=self.vae_list[n].get_layer(ENCODER_STEM_NAME.format(n))

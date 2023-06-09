@@ -50,16 +50,10 @@ def YVAE_Trainer_generate_images_test(
 def VAE_Trainer_Unit_test(input_shape=(32,32,3),
     latent_dim=10,
     n_classes=3,
-    start_name='encoder_conv_4',
+    mid_name='encoder_conv_4',
     epochs=1):
-    inputs = Input(shape=input_shape, name='encoder_input')
-    print('54')
-    pretrained_encoder=get_encoder(inputs, latent_dim)
-    print('56')
-    shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
-    print('57')
-    unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
-    print('60')
+    pretrained_encoder=get_encoder(input_shape, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
@@ -74,12 +68,10 @@ def VAE_Trainer_Unit_test(input_shape=(32,32,3),
 def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
     latent_dim=10,
     n_classes=3,
-    start_name='encoder_conv_4',
+    mid_name='encoder_conv_4',
     epochs=1):
-    inputs = Input(shape=input_shape, name='encoder_input')
-    pretrained_encoder=get_encoder(inputs, latent_dim)
-    shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
-    unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
+    pretrained_encoder=get_encoder(input_shape, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
@@ -92,13 +84,10 @@ def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
 def VAE_Trainer_Unit_style_transfer_test(input_shape=(32,32,3),
     latent_dim=10,
     n_classes=3,
-    start_name='encoder_conv_2',
+    mid_name='encoder_conv_2',
     epochs=1):
-    print('97')
-    inputs = Input(shape=input_shape, name='encoder_input')
-    pretrained_encoder=get_encoder(inputs, latent_dim)
-    shared_partial=get_shared_partial(pretrained_encoder, start_name, latent_dim)
-    unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
+    pretrained_encoder=get_encoder(input_shape, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
     dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
@@ -118,7 +107,6 @@ def VAE_Creativity_Trainer_test(input_shape=(32,32,3),
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
     dataset_dict={}
     test_dataset_dict={}
-    inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
     batch_size=4
     dataset_list=yvae_creativity_get_dataset_train(image_dim=input_shape[1],batch_size=batch_size)
     pretrained_classifier=get_classifier_model(latent_dim,input_shape,n_classes)

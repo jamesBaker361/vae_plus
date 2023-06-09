@@ -92,19 +92,16 @@ def YvaeUnitSavingCallback_test(
     dataset_dict=yvae_get_dataset_train(batch_size=4, image_dim=input_shape[1])
     test_dataset_dict=yvae_get_dataset_test(batch_size=4, image_dim=input_shape[1])
     optimizer=keras.optimizers.Adam(learning_rate=0.0001)
-    inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
-    encoder=get_encoder(inputs,latent_dim)
-    start_name=ENCODER_CONV_NAME.format(2)
-    print([layer.name for layer in encoder.layers])
-    shared_partial=get_shared_partial(encoder, start_name, latent_dim=latent_dim)
+    encoder=get_encoder(input_shape,latent_dim)
+    mid_name=ENCODER_CONV_NAME.format(2)
 
-    unit_list=get_unit_list(input_shape,latent_dim,n_classes,shared_partial, start_name)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,encoder, mid_name)
     trainer=VAE_Unit_Trainer(unit_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir)
     callback=YvaeUnitSavingCallback(trainer, saved_model_folder,1,1)
     callback(1)
     shared_partial=tf.keras.models.load_model(saved_model_folder+SHARED_ENCODER_NAME)
     decoders=[tf.keras.models.load_model(saved_model_folder+DECODER_NAME.format(i)) for i in range(n_classes)]
-    partials=[tf.keras.models.load_model(saved_model_folder+PARTIAL_ENCODER_NAME.format(i)) for i in range(n_classes)]
+    partials=[tf.keras.models.load_model(saved_model_folder+UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(n_classes)]
     new_unit_list=load_unit_list(shared_partial, decoders, partials)
     trainer=VAE_Unit_Trainer(new_unit_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir)
     trainer.train_loop()

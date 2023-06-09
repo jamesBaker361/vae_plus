@@ -31,7 +31,6 @@ parser.add_argument("--kl_loss_scale",type=float,default=1.0,help='scale of kl_l
 parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse')
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
-parser.add_argument("--use_unit",help='whether to use unsupervised image to image',type=bool,default=False)
 
 args = parser.parse_args()
 
@@ -67,7 +66,7 @@ def objective_unit(trial,args):
         if args.load:
             shared_partial=tf.keras.models.load_model(save_model_folder+SHARED_ENCODER_NAME)
             decoders=[tf.keras.models.load_model(save_model_folder+DECODER_NAME.format(i)) for i in range(n_classes)]
-            partials=[tf.keras.models.load_model(save_model_folder+PARTIAL_ENCODER_NAME.format(i)) for i in range(n_classes)]
+            partials=[tf.keras.models.load_model(save_model_folder+UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(n_classes)]
             unit_list=load_unit_list(shared_partial, decoders, partials)
 
             with open(save_model_folder+"/meta_data.json","r") as src_file:
@@ -76,12 +75,9 @@ def objective_unit(trial,args):
             print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch),flush=True)
 
         else:
-            inputs = Input(shape=input_shape, name=ENCODER_INPUT_NAME)
-            encoder=get_encoder(inputs,args.latent_dim)
-            start_name=ENCODER_CONV_NAME.format(2)
-            print([layer.name for layer in encoder.layers])
-            shared_partial=get_shared_partial(encoder, start_name, latent_dim=args.latent_dim)
-            unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,shared_partial, start_name)
+            encoder=get_encoder(input_shape,args.latent_dim)
+            mid_name=ENCODER_CONV_NAME.format(2)
+            unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name)
 
     dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
     test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)

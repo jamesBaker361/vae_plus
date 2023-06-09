@@ -1,4 +1,4 @@
-from typing import Any
+
 import matplotlib.pyplot as plt
 import sys
 sys.path.append("data_utils")
@@ -112,7 +112,7 @@ class YvaeUnitSavingCallback:
             self.trainer.shared_partial.save(self.save_model_folder+SHARED_ENCODER_NAME)
             for x in range(len(self.trainer.decoders)):
                 self.trainer.decoders[x].save(self.save_model_folder+DECODER_NAME.format(x))
-                self.trainer.partials[x].save(self.save_model_folder+PARTIAL_ENCODER_NAME.format(x))
+                self.trainer.partials[x].save(self.save_model_folder+UNSHARED_PARTIAL_ENCODER_NAME.format(x))
             print('saved at location {} epoch {}'.format(self.save_model_folder, epoch),flush=True)
             meta_data = {"epoch":epoch}
             json_object = json.dumps(meta_data, indent=4)
