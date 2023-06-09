@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Lambda, Reshape, Conv2DTranspose, BatchNormalization, Activation, UpSampling2D, Concatenate, Dropout
+from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Lambda, Reshape, Conv2DTranspose, BatchNormalization, Activation, UpSampling2D, Concatenate, Dropout, GlobalAveragePooling2D, LeakyReLU
 from tensorflow.keras.models import Model
 from tensorflow.keras.losses import mse
 from tensorflow.keras import backend as K
@@ -23,6 +23,8 @@ RESNET_CLASSIFIER='resnet_classifier'
 MOBILE_NET='mobile'
 EFFICIENT_NET='efficient'
 VGG='vgg19'
+FLATTEN='flatten'
+
 
 class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
     def call(self, inputs):
@@ -65,7 +67,7 @@ def get_encoder(input_shape, latent_dim):
         #count+=1
         x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         bn_count+=1
-    x = Flatten(name="flatten")(x)
+    x = Flatten(name=FLATTEN)(x)
     z_mean = Dense(latent_dim, name=Z_MEAN)(x)
     z_log_var = Dense(latent_dim, name=Z_LOG_VAR)(x)
     return Model(inputs, [z_mean, z_log_var, SamplingLayer(name='z')([z_mean, z_log_var,latent_dim])], name=ENCODER_NAME)
@@ -88,7 +90,7 @@ def get_shared_partial(encoder, mid_name, latent_dim):
     '''
     layer_names=[layer.name for layer in encoder.layers]
     start_index=layer_names.index(mid_name)
-    flatten_index=layer_names.index('flatten')
+    flatten_index=layer_names.index(FLATTEN)
     input_shape=encoder.layers[start_index].input_shape[1:]
     inputs = Input(shape=input_shape)
     #pretrained_encoder.summary()
@@ -216,24 +218,37 @@ def get_decoder(latent_dim, image_dim,n=0):
     decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
     return Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
 
-def get_classification_head(latent_dim,n_classes):
-    inputs = Input(shape=(latent_dim,))
-    x=Dense(latent_dim//4)(inputs)
-    x=tf.keras.layers.LeakyReLU()(x)
+def get_classification_head(class_latent_dim,n_classes):
+    inputs = Input(shape=(class_latent_dim,))
+    x=Dense(n_classes*2)(inputs)
+    x=LeakyReLU()(x)
     x=Dropout(0.2)(x)
     x=Dense(n_classes)(x)
     x=SoftmaxWithMaxSubtraction()(x)
     return Model(inputs, x,name=CLASSIFICATION_HEAD)
 
-def get_classifier_model(latent_dim,input_shape,n_classes):
+def get_classifier_model(latent_dim,input_shape,n_classes,class_latent_dim=0):
     encoder = get_encoder(input_shape, latent_dim)
-    encoder.build(input_shape)
-    classification_head=get_classification_head(latent_dim, n_classes)
-    classification_head.build((latent_dim))
-
-    [z_mean, z_log_var, latents]=encoder(encoder.inputs)
-    predictions=classification_head(latents)
-    return Model(encoder.inputs, predictions, name=CLASSIFIER_MODEL)
+    extracted_encoder=extract_unshared_partial_encoder(encoder=encoder,
+                                                       start_name=ENCODER_INPUT_NAME,
+                                                       mid_name=FLATTEN,
+                                                       n=0)
+    model_layers=[
+        extracted_encoder
+    ]
+    if class_latent_dim<1:
+        class_latent_dim=extracted_encoder.output_shape[-1]
+    else:
+        model_layers+=[
+            Dense(class_latent_dim),
+            LeakyReLU(),
+            Dropout(0.2)
+            ]
+    model_layers+=[
+        GlobalAveragePooling2D(),
+        get_classification_head(class_latent_dim, n_classes)
+    ]
+    return tf.keras.Sequential(model_layers,name=CLASSIFIER_MODEL)
 
 
 
@@ -282,10 +297,10 @@ def get_resnet_classifier(input_shape, n_classes):
     x = residual_block(x, 64, 3)
 
     # Global average pooling
-    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    x = GlobalAveragePooling2D()(x)
 
     # Output layer
-    outputs = tf.keras.layers.Dense(n_classes, activation='softmax')(x)
+    outputs = Dense(n_classes, activation='softmax')(x)
 
     # Create the model
     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=RESNET_CLASSIFIER)

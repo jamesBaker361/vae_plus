@@ -69,3 +69,4 @@ if __name__ =='__main__':
     get_unit_list_from_creative_test()
     get_resnet_classifier_test()
     get_external_classifier_test()
+    print("all done :)))")
