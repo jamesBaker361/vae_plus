@@ -51,6 +51,7 @@ def YvaeClassifierSavingCallbackTest(
     n_classes=len(dataset_names)
     optimizer=keras.optimizers.Adam(learning_rate=0.0001)
     classifier_model=get_classifier_model(latent_dim,input_shape,n_classes)
+    classifier_model(tf.random.normal((1,*input_shape)))
     batch_size=4
     
     dataset=yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names,image_dim=input_shape[1])
@@ -59,6 +60,7 @@ def YvaeClassifierSavingCallbackTest(
     callback=YvaeClassifierSavingCallback(trainer,saved_model_folder,1,1)
     callback(1)
     classifier_model=tf.saved_model.load(saved_model_folder+"classifier_model")
+    classifier_model(tf.random.normal((1,*input_shape)))
 
 
 def YvaeClassifierResNetSavingCallbackTest(
@@ -71,6 +73,7 @@ def YvaeClassifierResNetSavingCallbackTest(
     n_classes=len(dataset_names)
     optimizer=keras.optimizers.Adam(learning_rate=0.0001)
     resnet_classifier=get_resnet_classifier(input_shape,n_classes)
+    resnet_classifier(tf.random.normal((1,*input_shape)))
     batch_size=4
     
     dataset=yvae_get_labeled_dataset_train(batch_size=batch_size, dataset_names=dataset_names,image_dim=input_shape[1])

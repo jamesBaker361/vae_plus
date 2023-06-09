@@ -24,6 +24,7 @@ MOBILE_NET='mobile'
 EFFICIENT_NET='efficient'
 VGG='vgg19'
 FLATTEN='flatten'
+EXTERNAL_MODEL='external_model'
 
 
 class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
@@ -313,7 +314,9 @@ def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim
         VGG: tf.keras.applications.vgg19.VGG19
     }
     pretrained_model=mapping[external_name]
-    external= pretrained_model(input_shape=input_shape, include_top=False)
+    external= tf.keras.Sequential([
+        pretrained_model(input_shape=input_shape, include_top=False)
+        ],name=EXTERNAL_MODEL)
     model_layers=[
         external
     ]
