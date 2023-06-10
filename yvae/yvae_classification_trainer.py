@@ -98,12 +98,6 @@ class YVAE_Classifier_Trainer:
             print('shape', tf.shape(imgs))
             loss=self.loss_function(labels,predictions)
             print('loss', loss)
-            img=imgs[0]
-            plt.title('pred: {} label: {}'.format(predictions[0], labels[0]))
-            plt.imshow(denormalize(img))
-            path='{}_test_img_{}.png'.format(self.log_dir,e)
-            plt.savefig(path)
-            plt.clf()
             if e%TEST_INTERVAL==0:
                 start = time.time()
                 for batch in self.test_dataset:
