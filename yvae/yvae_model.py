@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Lambda, Reshape, Conv2DTranspose, BatchNormalization, Activation, UpSampling2D, Concatenate, Dropout, GlobalAveragePooling2D, LeakyReLU
+from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Lambda, Reshape, Conv2DTranspose, BatchNormalization, Activation, UpSampling2D, Layer, Dropout, GlobalAveragePooling2D, LeakyReLU
 from tensorflow.keras.models import Model
 from tensorflow.keras.losses import mse
 from tensorflow.keras import backend as K
@@ -23,9 +23,11 @@ RESNET_CLASSIFIER='resnet_classifier'
 MOBILE_NET='mobile'
 EFFICIENT_NET='efficient'
 VGG='vgg19'
+XCEPTION='xception'
 FLATTEN='flatten'
+NAS_NET="nas"
 EXTERNAL_MODEL='external_model'
-EXTERNAL_NAME_LIST=[MOBILE_NET, EFFICIENT_NET, VGG]
+EXTERNAL_NAME_LIST=[ NAS_NET,MOBILE_NET, EFFICIENT_NET, VGG, XCEPTION]
 
 
 class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
@@ -308,11 +310,21 @@ def get_resnet_classifier(input_shape, n_classes):
     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=RESNET_CLASSIFIER)
     return model
 
+class PreprocessLayer(Layer):
+    def __init__(self, preprocessing_function):
+        super().__init__()
+        self.preprocessing_function=preprocessing_function
+
+    def call(self,inputs):
+        return self.preprocessing_function(inputs)
+
 def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim=0):
     mapping={
         MOBILE_NET:tf.keras.applications.MobileNetV3Small,
         EFFICIENT_NET:tf.keras.applications.efficientnet.EfficientNetB0,
-        VGG: tf.keras.applications.vgg19.VGG19
+        VGG: tf.keras.applications.vgg19.VGG19,
+        XCEPTION: tf.keras.applications.xception.Xception,
+        NAS_NET: tf.keras.applications.NASNetMobile,
     }
     pretrained_model=mapping[external_name](input_shape=input_shape, include_top=False)
     pretrained_model.summary()
