@@ -26,8 +26,9 @@ VGG='vgg19'
 XCEPTION='xception'
 FLATTEN='flatten'
 NAS_NET="nas"
+INCEPTION='inception'
 EXTERNAL_MODEL='external_model'
-EXTERNAL_NAME_LIST=[ NAS_NET,MOBILE_NET, EFFICIENT_NET, VGG, XCEPTION]
+EXTERNAL_NAME_LIST=[ INCEPTION ,NAS_NET,MOBILE_NET, EFFICIENT_NET, VGG, XCEPTION]
 
 
 class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
@@ -310,13 +311,14 @@ def get_resnet_classifier(input_shape, n_classes):
     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=RESNET_CLASSIFIER)
     return model
 
-class PreprocessLayer(Layer):
+class PreprocessingLayer(Layer):
     def __init__(self, preprocessing_function):
         super().__init__()
         self.preprocessing_function=preprocessing_function
 
     def call(self,inputs):
         return self.preprocessing_function(inputs)
+
 
 def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim=0):
     mapping={
@@ -325,12 +327,28 @@ def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim
         VGG: tf.keras.applications.vgg19.VGG19,
         XCEPTION: tf.keras.applications.xception.Xception,
         NAS_NET: tf.keras.applications.NASNetMobile,
+        INCEPTION:tf.keras.applications.InceptionResNetV2
     }
+
+    preprocessing_mapping={
+        MOBILE_NET:tf.keras.applications.mobilenet_v3.preprocess_input,
+        EFFICIENT_NET:tf.keras.applications.efficientnet.preprocess_input,
+        VGG: tf.keras.applications.vgg19.preprocess_input,
+        XCEPTION: tf.keras.applications.xception.preprocess_input,
+        NAS_NET: tf.keras.applications.nasnet.preprocess_input,
+        INCEPTION:tf.keras.applications.inception_resnet_v2.preprocess_input
+    }
+
+
+
     pretrained_model=mapping[external_name](input_shape=input_shape, include_top=False)
+    preprocessing_layer=PreprocessingLayer(preprocessing_mapping[external_name])
     pretrained_model.summary()
     external= tf.keras.Sequential([
+        preprocessing_layer,
         pretrained_model
         ],name=EXTERNAL_MODEL)
+    external.build((None, *input_shape))
     external.trainable=False
     model_layers=[
         external
