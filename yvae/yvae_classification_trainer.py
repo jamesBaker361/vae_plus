@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 import time
 
-TEST_INTERVAL=5
+TEST_INTERVAL=1
 EPSILON= 1e-8
 import random
 TRAIN_LOSS='train_loss'
