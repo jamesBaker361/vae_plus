@@ -57,9 +57,19 @@ def get_external_classifier_test(input_shape=(64,64,3)):
         external_classifier(tf.random.normal((1,*input_shape)))
 
 
+def preprocessing_layer_test(input_shape=(64,64,3)):
+    function=tf.keras.applications.vgg19.preprocess_input
+    layer=PreprocessingLayer(function)
+    model=tf.keras.Sequential(
+        [layer]
+    )
+    model(tf.random.normal((1,*input_shape)))
+
+
 
 
 if __name__ =='__main__':
+    preprocessing_layer_test()
     classification_head_test()
     classification_model_test()
     get_shared_partial_test()
