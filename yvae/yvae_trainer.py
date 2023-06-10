@@ -34,7 +34,7 @@ def get_compute_creativity_loss(reconstruction_loss_function, creativity_lambda,
     return _compute_creativity_loss
 
 class VAE_Trainer:
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale,callbacks=[],start_epoch=0):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale, callbacks=[],start_epoch=0):
         self.vae_list=vae_list
         self.decoders=[vae_list[i].get_layer(DECODER_NAME.format(i)) for i in range(len(vae_list))]
         self.epochs=epochs
@@ -110,9 +110,13 @@ class VAE_Trainer:
         self.test_reconstruction_loss(reconstruction_loss)
         return total_loss
 
+    def epoch_setup(self,e):
+        pass
+
     def train_loop(self):
         print('train loop begin')
         for e in range(self.start_epoch,self.epochs):
+            self.epoch_setup(e)
             start = time.time()
             for d,dataset in enumerate(self.dataset_list):
                 vae=self.vae_list[d]
@@ -154,11 +158,25 @@ class VAE_Trainer:
         return [decoder(noise) for decoder in self.decoders]
 
 class VAE_Unit_Trainer(VAE_Trainer):
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, unfrozen_optimizer=None):
         super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
         self.partials=[vae_list[i].get_layer(ENCODER_STEM_NAME.format(i)).get_layer(UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(len(vae_list))]
+        self.unfreezing_epoch=unfreezing_epoch
+        self.fine_tuning = fine_tuning
+        self.unfrozen_optimizer=unfrozen_optimizer
+        if self.fine_tuning:
+            self.shared_partial.trainable=False
+            for p in self.partials:
+                p.trainable=False
+
+    def epoch_setup(self,e):
+        if self.fine_tuning and self.unfreezing_epoch<=e:
+            self.optimizer=self.unfrozen_optimizer
+            self.shared_partial.trainable=True
+            for p in self.partials:
+                p.trainable=True
 
     def style_transfer(self,img,n):
         encoder=self.vae_list[n].get_layer(ENCODER_STEM_NAME.format(n))

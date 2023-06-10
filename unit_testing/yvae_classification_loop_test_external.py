@@ -43,13 +43,10 @@ def objective_external_test(image_dim):
 
 if __name__=='__main__':
     for dim in [32,128]: #,128,512]:
-        args.batch_size=4
-        args.name='unit_testing_classification_{}'.format(dim)
-        objective_test(dim)
-        objective_test_save(dim)
-        objective_test_load(dim)
-        args.name='resnet_unit_testing_{}'.format(dim)
-        args.resnet=True
+        args.name='external_unit_testing_{}'.format(dim)
+        args.external_name=VGG
+        args.unfreezing_epoch=4
+        args.resnet=False
         objective_test(dim)
         objective_test_save(dim)
         objective_test_load(dim)
