@@ -27,10 +27,9 @@ MOBILE_NET='mobile'
 EFFICIENT_NET='efficient'
 VGG='vgg19'
 XCEPTION='xception'
-NAS_NET="nas"
 INCEPTION='inception'
 EXTERNAL_MODEL='external_model'
-EXTERNAL_NAME_LIST=[ INCEPTION ,NAS_NET,MOBILE_NET, EFFICIENT_NET, VGG, XCEPTION]
+EXTERNAL_NAME_LIST=[ INCEPTION ,MOBILE_NET, EFFICIENT_NET, VGG, XCEPTION]
 
 
 class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
@@ -328,7 +327,6 @@ def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim
         EFFICIENT_NET:tf.keras.applications.efficientnet.EfficientNetB0,
         VGG: tf.keras.applications.vgg19.VGG19,
         XCEPTION: tf.keras.applications.xception.Xception,
-        NAS_NET: tf.keras.applications.NASNetMobile,
         INCEPTION:tf.keras.applications.InceptionResNetV2
     }
 
@@ -337,7 +335,6 @@ def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim
         EFFICIENT_NET:tf.keras.applications.efficientnet.preprocess_input,
         VGG: tf.keras.applications.vgg19.preprocess_input,
         XCEPTION: tf.keras.applications.xception.preprocess_input,
-        NAS_NET: tf.keras.applications.nasnet.preprocess_input,
         INCEPTION:tf.keras.applications.inception_resnet_v2.preprocess_input
     }
 
