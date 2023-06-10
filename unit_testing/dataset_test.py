@@ -9,8 +9,11 @@ def load_all_datasets():
     for num in [0.5,5,10,20,30,40,50]:
         flickr="jlbaker361/flickr_humans_{}k".format(num)
         anime="jlbaker361/anime_faces_{}k".format(num)
-        load_dataset(flickr, split="train",cache_dir="../../../../../scratch/jlb638/hf_cache")
-        load_dataset(anime, split="train",cache_dir="../../../../../scratch/jlb638/hf_cache")
+        flickr_128="jlbaker361/flickr_humans_dim_128_{}k".format(num)
+        anime_128="jlbaker361/anime_faces_dim_128_{}k".format(num)
+        female_128='jlbaker361/kaggle_females_dim_128_{}k'.format(num)
+        for name in [flickr,flickr_128,anime, anime_128,female_128]:
+            load_dataset(name, split="train",cache_dir="../../../../../scratch/jlb638/hf_cache")
 
 
 def prod_dataset_test(image_dim=128):

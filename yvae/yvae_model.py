@@ -20,11 +20,13 @@ CLASSIFICATION_HEAD='classification_head'
 Z_MEAN='z_mean'
 Z_LOG_VAR='z_log_var'
 RESNET_CLASSIFIER='resnet_classifier'
+
+FLATTEN='flatten'
+
 MOBILE_NET='mobile'
 EFFICIENT_NET='efficient'
 VGG='vgg19'
 XCEPTION='xception'
-FLATTEN='flatten'
 NAS_NET="nas"
 INCEPTION='inception'
 EXTERNAL_MODEL='external_model'
