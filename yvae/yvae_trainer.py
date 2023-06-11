@@ -34,7 +34,7 @@ def get_compute_creativity_loss(reconstruction_loss_function, creativity_lambda,
     return _compute_creativity_loss
 
 class VAE_Trainer:
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale, callbacks=[],start_epoch=0):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale,data_augmentation, callbacks=[],start_epoch=0):
         self.vae_list=vae_list
         self.decoders=[vae_list[i].get_layer(DECODER_NAME.format(i)) for i in range(len(vae_list))]
         self.epochs=epochs
@@ -46,6 +46,7 @@ class VAE_Trainer:
         self.start_epoch=start_epoch
         self.kl_loss_scale=kl_loss_scale
         self.log_dir=log_dir
+        self.data_augmentation=data_augmentation
         
         self.mirrored_strategy=mirrored_strategy
         if mirrored_strategy is not None:
@@ -58,6 +59,9 @@ class VAE_Trainer:
                 self.summary_writer = tf.summary.create_file_writer(log_dir)
                 self.compute_kl_loss=get_compute_kl_loss(kl_loss_scale, global_batch_size)
                 self.total_loss=None
+                self.data_augmenter= tf.keras.Sequential(
+                    [tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal"), tf.keras.layers.experimental.preprocessing.RandomRotation(0.1),]
+                    )
                 
         else:
             self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
@@ -68,6 +72,10 @@ class VAE_Trainer:
             self.summary_writer = tf.summary.create_file_writer(log_dir)
             self.compute_kl_loss=get_compute_kl_loss(kl_loss_scale, global_batch_size)
             self.total_loss=None
+            self.data_augmenter= tf.keras.Sequential(
+                    [tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal"), tf.keras.layers.experimental.preprocessing.RandomRotation(0.1),]
+                    )
+            
         self.train_metrics={
             TRAIN_LOSS:self.train_loss,
             TRAIN_RECONSTRUCTION_LOSS:self.train_reconstruction_loss
@@ -79,6 +87,8 @@ class VAE_Trainer:
 
     #@tf.function
     def train_step(self,batch,vae):
+        if self.data_augmentation:
+            batch=self.data_augmenter(batch)
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)
             reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
@@ -158,8 +168,8 @@ class VAE_Trainer:
         return [decoder(noise) for decoder in self.decoders]
 
 class VAE_Unit_Trainer(VAE_Trainer):
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, unfrozen_optimizer=None):
-        super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, unfrozen_optimizer=None, data_augmentation=False):
+        super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size,data_augmentation=data_augmentation)
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
         self.partials=[vae_list[i].get_layer(ENCODER_STEM_NAME.format(i)).get_layer(UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(len(vae_list))]
@@ -189,8 +199,8 @@ class VAE_Unit_Trainer(VAE_Trainer):
         return ret
 
 class YVAE_Trainer(VAE_Trainer):
-    def __init__(self,y_vae_list,epochs,dataset_dict, test_dataset_dict,optimizer,reconstruction_loss_function_name='mse',log_dir='', mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4):
-        super().__init__(y_vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
+    def __init__(self,y_vae_list,epochs,dataset_dict, test_dataset_dict,optimizer,reconstruction_loss_function_name='mse',log_dir='', mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4, data_augmentation=False):
+        super().__init__(y_vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size,data_augmentation=data_augmentation)
         self.encoder=y_vae_list[0].get_layer(ENCODER_NAME)
         if mirrored_strategy is not None:
             with mirrored_strategy.scope():
@@ -213,8 +223,8 @@ class YVAE_Trainer(VAE_Trainer):
                 self.reconstruction_loss_function=tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.NONE)
 
 class VAE_Creativity_Trainer(YVAE_Trainer):
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=None, creativity_lambda=1.0,n_classes=2):
-        super().__init__(vae_list,epochs,dataset_dict=dataset_dict,test_dataset_dict=test_dataset_dict,optimizer=optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size)
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,dataset_list,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0, global_batch_size=4,pretrained_classifier=None, creativity_lambda=1.0,n_classes=2,data_augmentation=False):
+        super().__init__(vae_list,epochs,dataset_dict=dataset_dict,test_dataset_dict=test_dataset_dict,optimizer=optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size, data_augmentation=data_augmentation)
         self.dataset_list=[dataset_list] #should be a list of images and shit from all classes
         self.creativity_lambda=creativity_lambda
         self.pretrained_classifier=pretrained_classifier

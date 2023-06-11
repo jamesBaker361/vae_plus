@@ -32,6 +32,7 @@ parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--resnet",type=bool, default=False)
 parser.add_argument("--external_name",type=str,default="",help='if set, whether to use external pretrained model')
 parser.add_argument("--unfreezing_epoch",type=int,default=10,help='epoch at which to unfreeze pretrained external model')
+parser.add_argument("--data_augmentation", type=bool, default=False,help="whether to do data augmentation when training")
 
 args = parser.parse_args()
 
@@ -94,7 +95,8 @@ def objective(trial, args):
     trainer=YVAE_Classifier_Trainer(classifier_model, args.epochs,optimizer, dataset, test_dataset=test_dataset,log_dir=log_dir,mirrored_strategy=mirrored_strategy,start_epoch=start_epoch,
                                     use_external=use_external,
                                     unfreezing_epoch=args.unfreezing_epoch,
-                                    unfrozen_optimizer=unfrozen_optimizer)
+                                    unfrozen_optimizer=unfrozen_optimizer,
+                                    data_augmentation=args.data_augmentation)
     if args.save:
         trainer.callbacks=[YvaeClassifierSavingCallback(trainer, save_model_folder, args.threshold, args.interval,model_name=model_name)]
     print("begin loop :O")

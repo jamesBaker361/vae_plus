@@ -11,7 +11,7 @@ TRAIN_LOSS='train_loss'
 TEST_LOSS='test_loss'
 
 class YVAE_Classifier_Trainer:
-    def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[],use_external=False,unfreezing_epoch=-1,unfrozen_optimizer=None):
+    def __init__(self,classifier_model,epochs,optimizer,dataset,test_dataset,log_dir='',mirrored_strategy=None,start_epoch=0,callbacks=[],use_external=False,unfreezing_epoch=-1,unfrozen_optimizer=None, data_augmentation=False):
         self.classifier_model=classifier_model
         self.epochs=epochs
         self.start_epoch=start_epoch
@@ -25,15 +25,22 @@ class YVAE_Classifier_Trainer:
         self.use_external=use_external #if we're using an external pretrained model like mobilenet or efficientnet
         self.unfreezing_epoch=unfreezing_epoch
         self.unfrozen_optimizer=unfrozen_optimizer
+        self.data_augmentation=data_augmentation
         if self.mirrored_strategy is not None:
             with self.mirrored_strategy.scope():
                 self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
                 self.train_loss = tf.keras.metrics.Mean(TRAIN_LOSS, dtype=tf.float32)
                 self.test_loss= tf.keras.metrics.Mean(TEST_LOSS, dtype=tf.float32)
+                self.data_augmenter= tf.keras.Sequential(
+                    [tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal"), tf.keras.layers.experimental.preprocessing.RandomRotation(0.1),]
+                    )
         else:
             self.loss_function=tf.keras.losses.CategoricalCrossentropy(from_logits=False,reduction=tf.keras.losses.Reduction.NONE)
             self.train_loss = tf.keras.metrics.Mean(TRAIN_LOSS, dtype=tf.float32)
             self.test_loss= tf.keras.metrics.Mean(TEST_LOSS, dtype=tf.float32)
+            self.data_augmenter= tf.keras.Sequential(
+                    [tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal"), tf.keras.layers.experimental.preprocessing.RandomRotation(0.1),]
+                    )
 
     def train_step(self,batch):
         with tf.GradientTape() as tape:

@@ -8,6 +8,7 @@ from yvae_data_helper import *
 from yvae_classification_loop import *
 
 def objective_test(image_dim):
+    args.data_augmentation=True
     args.load=False
     args.save=False
     args.epochs=12
