@@ -32,9 +32,11 @@ VGG='vgg19'
 XCEPTION='xception'
 INCEPTION='inception' #ass
 RESNET_50V2='resnet_50v2'
-RESNET_151V2='resnet_151v2'
+RESNET_152V2='resnet_152v2'
 EXTERNAL_MODEL='external_model'
-EXTERNAL_NAME_LIST=[ INCEPTION ,MOBILE_NET, EFFICIENT_NET, VGG, XCEPTION, MOBILE_LARGE, EFFICIENT_B7, EFFICIENT_B4, RESNET_50V2, RESNET_151V2]
+EXTERNAL_NAME_LIST=[ INCEPTION ,MOBILE_NET, 
+                    EFFICIENT_NET, VGG, XCEPTION, MOBILE_LARGE, 
+                    EFFICIENT_B7, EFFICIENT_B4, RESNET_50V2, RESNET_152V2]
 
 
 class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
@@ -329,7 +331,7 @@ class PreprocessingLayer(Layer):
 def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim=0):
     mapping={
         RESNET_50V2: tf.keras.applications.resnet_v2.ResNet50V2,
-        RESNET_151V2: tf.keras.applications.resnet_v2.ResNet151V2,
+        RESNET_152V2: tf.keras.applications.resnet_v2.ResNet152V2,
         MOBILE_LARGE: tf.keras.applications.MobileNetV3Large,
         MOBILE_NET:tf.keras.applications.MobileNetV3Small,
         EFFICIENT_NET:tf.keras.applications.efficientnet.EfficientNetB0,
@@ -342,7 +344,7 @@ def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim
 
     preprocessing_mapping={
         RESNET_50V2: tf.keras.applications.resnet_v2.preprocess_input,
-        RESNET_151V2: tf.keras.applications.resnet_v2.preprocess_input,
+        RESNET_152V2: tf.keras.applications.resnet_v2.preprocess_input,
         MOBILE_LARGE: tf.keras.applications.mobilenet_v3.preprocess_input,
         MOBILE_NET:tf.keras.applications.mobilenet_v3.preprocess_input,
         EFFICIENT_NET:tf.keras.applications.efficientnet.preprocess_input,
