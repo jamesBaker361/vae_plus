@@ -33,6 +33,7 @@ parser.add_argument("--resnet",type=bool, default=False)
 parser.add_argument("--external_name",type=str,default="",help='if set, whether to use external pretrained model')
 parser.add_argument("--unfreezing_epoch",type=int,default=10,help='epoch at which to unfreeze pretrained external model')
 parser.add_argument("--data_augmentation", type=bool, default=False,help="whether to do data augmentation when training")
+parser.add_argument("--init_lr", type=float,default=0.001, help='adam lr for frozen training')
 
 args = parser.parse_args()
 
