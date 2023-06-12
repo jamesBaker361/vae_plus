@@ -23,13 +23,18 @@ RESNET_CLASSIFIER='resnet_classifier'
 
 FLATTEN='flatten'
 
-MOBILE_NET='mobile'
-EFFICIENT_NET='efficient'
+MOBILE_NET='mobile' #ass
+MOBILE_LARGE="mobilenet_large"
+EFFICIENT_NET='efficient' #ass
+EFFICIENT_B7='efficient_b7'
+EFFICIENT_B4='efficient_b4'
 VGG='vgg19'
 XCEPTION='xception'
-INCEPTION='inception'
+INCEPTION='inception' #ass
+RESNET_50V2='resnet_50v2'
+RESNET_151V2='resnet_151v2'
 EXTERNAL_MODEL='external_model'
-EXTERNAL_NAME_LIST=[ INCEPTION ,MOBILE_NET, EFFICIENT_NET, VGG, XCEPTION]
+EXTERNAL_NAME_LIST=[ INCEPTION ,MOBILE_NET, EFFICIENT_NET, VGG, XCEPTION, MOBILE_LARGE, EFFICIENT_B7, EFFICIENT_B4, RESNET_50V2, RESNET_151V2]
 
 
 class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
@@ -323,16 +328,26 @@ class PreprocessingLayer(Layer):
 
 def get_external_classifier(input_shape,external_name,n_classes,class_latent_dim=0):
     mapping={
+        RESNET_50V2: tf.keras.applications.resnet_v2.ResNet50V2,
+        RESNET_151V2: tf.keras.applications.resnet_v2.ResNet151V2,
+        MOBILE_LARGE: tf.keras.applications.MobileNetV3Large,
         MOBILE_NET:tf.keras.applications.MobileNetV3Small,
         EFFICIENT_NET:tf.keras.applications.efficientnet.EfficientNetB0,
+        EFFICIENT_B4:tf.keras.applications.efficientnet.EfficientNetB4,
+        EFFICIENT_B7:tf.keras.applications.efficientnet.EfficientNetB7,
         VGG: tf.keras.applications.vgg19.VGG19,
         XCEPTION: tf.keras.applications.xception.Xception,
         INCEPTION:tf.keras.applications.InceptionResNetV2
     }
 
     preprocessing_mapping={
+        RESNET_50V2: tf.keras.applications.resnet_v2.preprocess_input,
+        RESNET_151V2: tf.keras.applications.resnet_v2.preprocess_input,
+        MOBILE_LARGE: tf.keras.applications.mobilenet_v3.preprocess_input,
         MOBILE_NET:tf.keras.applications.mobilenet_v3.preprocess_input,
         EFFICIENT_NET:tf.keras.applications.efficientnet.preprocess_input,
+        EFFICIENT_B4:tf.keras.applications.efficientnet.preprocess_input,
+        EFFICIENT_B7:tf.keras.applications.efficientnet.preprocess_input,
         VGG: tf.keras.applications.vgg19.preprocess_input,
         XCEPTION: tf.keras.applications.xception.preprocess_input,
         INCEPTION:tf.keras.applications.inception_resnet_v2.preprocess_input
