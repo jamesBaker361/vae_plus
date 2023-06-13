@@ -31,6 +31,9 @@ parser.add_argument("--kl_loss_scale",type=float,default=1.0,help='scale of kl_l
 parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse')
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
+parser.add_argument("--fine_tuning",type=bool, default=False,help="wheter to use fine tuning training (freezing encoder initially)")
+parser.add_argument("--init_lr",type=float,default=0.001,help='lr for adam optimizer')
+parser.add_argument("--unfreezing_epoch",type=int,default=-1,help='epoch to unfreeze pretrained encoder for fine tuning')
 
 args = parser.parse_args()
 
@@ -60,8 +63,9 @@ def objective_unit(trial,args):
 
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
-        GLOBAL_BATCH_SIZE = args.batch_size * mirrored_strategy.num_replicas_in_sync
-        optimizer=keras.optimizers.Adam(learning_rate=0.0001)
+        
+        optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)
+        unfrozen_optimizer=keras.optimizers.Adam(learning_rate=0.00001)
         #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
             shared_partial=tf.keras.models.load_model(save_model_folder+SHARED_ENCODER_NAME)
@@ -81,9 +85,9 @@ def objective_unit(trial,args):
 
     dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
     test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
-    strategy=mirrored_strategy
     trainer=VAE_Unit_Trainer(unit_list, args.epochs, dataset_dict=dataset_dict, test_dataset_dict=test_dataset_dict, 
-                             optimizer=optimizer, log_dir=log_dir, mirrored_strategy=mirrored_strategy, kl_loss_scale=args.kl_loss_scale,start_epoch=start_epoch)
+                             optimizer=optimizer, log_dir=log_dir, mirrored_strategy=mirrored_strategy, kl_loss_scale=args.kl_loss_scale,start_epoch=start_epoch,
+                             unfreezing_epoch=args.unfreezing_epoch, fine_tuning=args.fine_tuning, unfrozen_optimizer=unfrozen_optimizer )
     callbacks=[
         YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3)
     ]

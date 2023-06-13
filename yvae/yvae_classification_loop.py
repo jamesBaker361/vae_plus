@@ -73,7 +73,7 @@ def objective(trial, args):
 
 
     with mirrored_strategy.scope():
-        optimizer=keras.optimizers.Adam(learning_rate=0.001)
+        optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)
         unfrozen_optimizer=keras.optimizers.Adam(learning_rate=0.00001)
         #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
