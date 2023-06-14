@@ -34,6 +34,7 @@ parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in t
 parser.add_argument("--fine_tuning",type=bool, default=False,help="wheter to use fine tuning training (freezing encoder initially)")
 parser.add_argument("--init_lr",type=float,default=0.001,help='lr for adam optimizer')
 parser.add_argument("--unfreezing_epoch",type=int,default=-1,help='epoch to unfreeze pretrained encoder for fine tuning')
+parser.add_argument("--use_residual",type=bool,default=False)
 
 args = parser.parse_args()
 
@@ -61,7 +62,7 @@ def objective_unit(trial,args):
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy()
+    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus, cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
     with mirrored_strategy.scope():
         
         optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)
@@ -76,12 +77,12 @@ def objective_unit(trial,args):
             with open(save_model_folder+"/meta_data.json","r") as src_file:
                 start_epoch=json.load(src_file)["epoch"]
 
-            print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch),flush=True)
+            print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch))
 
         else:
-            encoder=get_encoder(input_shape,args.latent_dim)
+            encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual)
             mid_name=ENCODER_CONV_NAME.format(2)
-            unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name)
+            unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name, use_residual=args.use_residual)
 
     dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
     test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
