@@ -62,7 +62,9 @@ def objective_unit(trial,args):
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus, cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus)
+    #mirrored_strategy = tf.distribute.MirroredStrategy()
+    start=time.time()
     with mirrored_strategy.scope():
         
         optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)
@@ -84,8 +86,12 @@ def objective_unit(trial,args):
             mid_name=ENCODER_CONV_NAME.format(2)
             unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name, use_residual=args.use_residual)
 
-    dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
-    test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
+        data_start=time.time()
+        print("mirrored stuff minus data took {} seconds".format(data_start-start))
+        dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
+        test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
+        data_end=time.time()
+        print("seeting up data took {} seconds ".format(data_end-data_start))
     trainer=VAE_Unit_Trainer(unit_list, args.epochs, dataset_dict=dataset_dict, test_dataset_dict=test_dataset_dict, 
                              optimizer=optimizer, log_dir=log_dir, mirrored_strategy=mirrored_strategy, kl_loss_scale=args.kl_loss_scale,start_epoch=start_epoch,
                              unfreezing_epoch=args.unfreezing_epoch, fine_tuning=args.fine_tuning, unfrozen_optimizer=unfrozen_optimizer )
@@ -95,6 +101,8 @@ def objective_unit(trial,args):
     if args.save:
         callbacks.append(YvaeUnitSavingCallback(trainer, save_model_folder, args.threshold, args.interval))
     trainer.callbacks=callbacks
+    end=time.time()
+    print("seeting up took {} seconds ".format(end-start))
     print("begin loop :O")
     trainer.train_loop()
 
