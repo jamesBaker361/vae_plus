@@ -11,6 +11,7 @@ SHARED_ENCODER_NAME='shared_encoder'
 ENCODER_INPUT_NAME='encoder_input'
 UNSHARED_PARTIAL_ENCODER_NAME='unshared_partial_encoder_{}'
 ENCODER_BN_NAME='encoder_bn_{}'
+RESIDUAL_LAYER_NAME='residual_layer_{}'
 ENCODER_STEM_NAME='encoder_stem_{}'
 ENCODER_CONV_NAME='encoder_conv_{}'
 DECODER_NAME='decoder_{}'
@@ -39,7 +40,7 @@ EXTERNAL_NAME_LIST=[ INCEPTION ,MOBILE_NET,
                     EFFICIENT_B7, EFFICIENT_B4, RESNET_50V2, RESNET_152V2]
 
 
-class SoftmaxWithMaxSubtraction(tf.keras.layers.Layer):
+class SoftmaxWithMaxSubtraction(Layer):
     def call(self, inputs):
         max_values = tf.reduce_max(inputs, axis=-1, keepdims=True)
         subtracted_values = tf.subtract(inputs, max_values)
@@ -51,7 +52,7 @@ def sampling(args):
     epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim), mean=0., stddev=1.)
     return z_mean + K.exp(z_log_var / 2) * epsilon
 
-class SamplingLayer(keras.layers.Layer):
+class SamplingLayer(Layer):
     
     def __init__(self,*args, **kwargs):
         super(SamplingLayer, self).__init__(*args,**kwargs)
@@ -71,15 +72,16 @@ def get_encoder(input_shape, latent_dim):
     count=2
     bn_count=1
     for dim in [64, 128,128]:
-        print(dim)
         x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same',name=ENCODER_CONV_NAME.format(count))(x)
         x=tf.keras.layers.LeakyReLU()(x)
         count+=1
-        #x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
+        x = ResidualLayer(dim,kernel_size=(3,3), name=RESIDUAL_LAYER_NAME.format(count))(x)
+        x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
         #x=tf.keras.layers.LeakyReLU()(x)
-        #count+=1
-        x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
-        bn_count+=1
+        count+=1
+        #x = ResidualLayer(dim,kernel_size=(3,3), name=RESIDUAL_LAYER_NAME.format(count))(x)
+        #x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
+        #bn_count+=1
     x = Flatten(name=FLATTEN)(x)
     z_mean = Dense(latent_dim, name=Z_MEAN)(x)
     z_log_var = Dense(latent_dim, name=Z_LOG_VAR)(x)
@@ -196,6 +198,7 @@ def get_decoder(latent_dim, image_dim,n=0):
     x = BatchNormalization()(x)
     x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
+    x = ResidualLayer(128,kernel_size=(3,3), )(x)
     x = Conv2D(128, (3, 3), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = BatchNormalization()(x)
@@ -203,31 +206,34 @@ def get_decoder(latent_dim, image_dim,n=0):
     x=tf.keras.layers.LeakyReLU()(x)
     x = Conv2D(64, (3, 3), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
-    x = BatchNormalization()(x)
+    ###x = ResidualLayer(64,kernel_size=(3,3), )(x)
     if image_dim > 32:
         x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = Conv2D(64, (3, 3), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
-        x = BatchNormalization()(x)
+        ##x = ResidualLayer(64,kernel_size=(3,3), )(x)
     if image_dim > 64:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = Conv2D(32, (3, 3), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization()(x)
+        ##x = ResidualLayer(32,kernel_size=(3,3), )(x)
     if image_dim > 128:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = Conv2D(32, (3, 3), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization()(x)
+        #x = ResidualLayer(32,kernel_size=(3,3), )(x)
     if image_dim > 256:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = Conv2D(32, (3, 3), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization()(x)
+        #x = ResidualLayer(128,kernel_size=(3,3), )(x)
     decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
     return Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
 
@@ -281,6 +287,54 @@ def get_y_vae_list(latent_dim, input_shape, n_classes):
     for vae in y_vae_list:
         vae.build(input_shape)
     return y_vae_list
+
+class ResidualLayer(keras.layers.Layer):
+    def __init__(self, filters, kernel_size, *args, **kwargs):
+        super(ResidualLayer, self).__init__(*args, **kwargs)
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.conv1 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
+        self.bn1 = tf.keras.layers.BatchNormalization()
+        self.leaky_relu1=tf.keras.layers.ReLU()
+        self.conv2 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
+        self.bn2 = tf.keras.layers.BatchNormalization()
+        self.leaky_relu2=tf.keras.layers.ReLU()
+
+    def build(self, input_shape):
+        if len(input_shape)==4:
+            input_shape=input_shape[1:]
+        self.conv1 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
+        self.bn1 = tf.keras.layers.BatchNormalization()
+        self.leaky_relu1=tf.keras.layers.ReLU()
+        self.conv2 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
+        self.bn2 = tf.keras.layers.BatchNormalization()
+        self.leaky_relu2=tf.keras.layers.ReLU()
+
+        if input_shape[-1] != self.filters:
+            self.shortcut = tf.keras.layers.Conv2D(self.filters, kernel_size=(1, 1), padding='same')
+        else:
+            self.shortcut = tf.identity
+
+        #print('LOOK AT ME HELLO input_shape is ',input_shape)
+        inputs=Input(shape=input_shape,name='res_layer inputs')
+        x = self.conv1(inputs)
+        x = self.bn1(x)
+        x = self.leaky_relu1(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+
+        shortcut = self.shortcut(inputs)
+        x = tf.keras.layers.add([x, shortcut])
+        x=self.leaky_relu2(x)
+
+        self.internal_model=keras.Model(inputs, x)
+
+    def call(self, inputs, *args, **kwargs):
+        return self.internal_model(inputs,*args, **kwargs)
+
+
+
+
 
 def residual_block(input_tensor, filters, kernel_size):
     # Convolutional layers

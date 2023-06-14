@@ -45,6 +45,8 @@ class YVAE_Classifier_Trainer:
     def train_step(self,batch):
         with tf.GradientTape() as tape:
             (imgs,labels)=batch
+            if self.data_augmentation:
+                imgs=self.data_augmenter(imgs)
             predictions=self.classifier_model(imgs) + EPSILON
             loss=self.loss_function(labels, predictions)
         self.train_loss(loss)

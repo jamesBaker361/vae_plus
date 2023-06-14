@@ -63,7 +63,7 @@ def objective(trial,args):
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy()
+    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus, cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
     with mirrored_strategy.scope():
         GLOBAL_BATCH_SIZE = args.batch_size * mirrored_strategy.num_replicas_in_sync
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
