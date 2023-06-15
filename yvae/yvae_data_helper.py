@@ -27,11 +27,11 @@ def yvae_get_dataset_train(batch_size=BATCH_SIZE,unit_test=False, dataset_names=
     options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
     if mirrored_strategy is None:
         dataset_dict={
-            name: get_single_dataset_train(unit_test, name, image_dim).shuffle(batch_size*100).batch(batch_size).with_options(options) for name in dataset_names
+            name: get_single_dataset_train(unit_test, name, image_dim).shuffle(batch_size*100,seed=1234).batch(batch_size).with_options(options) for name in dataset_names
         }
     else:
         dataset_dict={
-            name: mirrored_strategy.experimental_distribute_dataset(get_single_dataset_train(unit_test, name, image_dim).shuffle(batch_size*10).batch(batch_size)) for name in dataset_names
+            name: mirrored_strategy.experimental_distribute_dataset(get_single_dataset_train(unit_test, name, image_dim).shuffle(batch_size*100,seed=1234).batch(batch_size)) for name in dataset_names
         }
     return dataset_dict
 
@@ -39,11 +39,11 @@ def yvae_get_dataset_train(batch_size=BATCH_SIZE,unit_test=False, dataset_names=
 def yvae_get_dataset_test(batch_size=BATCH_SIZE,unit_test=False, dataset_names=["jlbaker361/flickr_humans_mini","jlbaker361/anime_faces_mini"],image_dim=512,mirrored_strategy=None):
     if mirrored_strategy is None:
         dataset_dict={
-            name: get_single_dataset_test(unit_test, name, image_dim).shuffle(batch_size*100).batch(batch_size) for name in dataset_names
+            name: get_single_dataset_test(unit_test, name, image_dim).shuffle(batch_size*100,seed=1234).batch(batch_size) for name in dataset_names
         }
     else:
         dataset_dict={
-            name: mirrored_strategy.experimental_distribute_dataset(get_single_dataset_test(unit_test, name, image_dim).shuffle(batch_size*10).batch(batch_size)) for name in dataset_names
+            name: mirrored_strategy.experimental_distribute_dataset(get_single_dataset_test(unit_test, name, image_dim).shuffle(batch_size*100,seed=1234).batch(batch_size)) for name in dataset_names
         }
     return dataset_dict
 

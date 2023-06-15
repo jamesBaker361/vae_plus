@@ -4,8 +4,18 @@ from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Lambda, Resha
 from tensorflow.keras.models import Model
 from tensorflow.keras.losses import mse
 from tensorflow.keras import backend as K
+from retrying import retry
+import traceback
+import time
+import os
+import psutil
 import numpy as np
 import matplotlib.pyplot as plt
+import gc
+from timeout_decorator import timeout
+import retrying
+
+process = psutil.Process(os.getpid())
 
 SHARED_ENCODER_NAME='shared_encoder'
 ENCODER_INPUT_NAME='encoder_input'
@@ -47,19 +57,29 @@ class SoftmaxWithMaxSubtraction(Layer):
         softmax_output = tf.nn.softmax(subtracted_values, axis=-1)
         return softmax_output
 
+@retrying.retry(stop_max_attempt_number=5)
+@timeout(5)
 def sampling(args):
+    #print('sampling')
+    #process = psutil.Process(os.getpid())
+    #pct=process.memory_percent()
+    #print('mem pct',pct)
+    #print(args)
     z_mean, z_log_var,latent_dim = args
+    #print('unpacked args')
     epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim), mean=0., stddev=1.)
+    #print('caluclated epsilon')
     return z_mean + K.exp(z_log_var / 2) * epsilon
 
 class SamplingLayer(Layer):
+    
     
     def __init__(self,*args, **kwargs):
         super(SamplingLayer, self).__init__(*args,**kwargs)
 
     def call(self,args):
-        return sampling(args)
-
+        ret= sampling(args)
+        return ret
 
 
 def get_encoder(input_shape, latent_dim,use_residual=False):
@@ -94,7 +114,12 @@ def get_encoder(input_shape, latent_dim,use_residual=False):
     x = Flatten(name=FLATTEN)(x)
     z_mean = Dense(latent_dim, name=Z_MEAN)(x)
     z_log_var = Dense(latent_dim, name=Z_LOG_VAR)(x)
-    return Model(inputs, [z_mean, z_log_var, SamplingLayer(name='z')([z_mean, z_log_var,latent_dim])], name=ENCODER_NAME)
+    print('intermediate layers made')
+    z=SamplingLayer(name='z')
+    print('sampling layer made :)')
+    x=z([z_mean, z_log_var,latent_dim])
+    print('functional outputs made')
+    return Model(inputs, [z_mean, z_log_var, x], name=ENCODER_NAME)
 
 def get_unshared_partial_encoder(input_shape,latent_dim, start_name,mid_name,n):
     '''gets the part of the encoder from layers [start_name:mid_name] (exclusive)

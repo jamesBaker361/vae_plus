@@ -9,6 +9,9 @@ from yvae_trainer import *
 from yvae_callbacks import *
 import argparse
 from datetime import datetime, timezone
+import psutil
+import gc
+from memory_profiler import profile
 
 from random import randrange
 import json
@@ -30,17 +33,21 @@ parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for enc
 parser.add_argument("--kl_loss_scale",type=float,default=1.0,help='scale of kl_loss for optimizing')
 parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse')
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
-parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
+parser.add_argument("--disable_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
 parser.add_argument("--fine_tuning",type=bool, default=False,help="wheter to use fine tuning training (freezing encoder initially)")
 parser.add_argument("--init_lr",type=float,default=0.001,help='lr for adam optimizer')
 parser.add_argument("--unfreezing_epoch",type=int,default=-1,help='epoch to unfreeze pretrained encoder for fine tuning')
 parser.add_argument("--use_residual",type=bool,default=False)
+parser.add_argument("--node",type=str,default='unknown')
 
 args = parser.parse_args()
 
 tf.config.run_functions_eagerly(True)
 
+@profile
 def objective_unit(trial,args):
+    print('eager mode = ', tf.executing_eagerly())
+    print('tf.config.experimental.get_synchronous_execution() =',tf.config.experimental.get_synchronous_execution())
     physical_devices= tf.config.list_physical_devices('GPU')
     print("Num physical GPUs Available: ",len(physical_devices))
     for device in physical_devices:
@@ -62,15 +69,65 @@ def objective_unit(trial,args):
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus)
+    mirrored_strategy = tf.distribute.MirroredStrategy()
     #mirrored_strategy = tf.distribute.MirroredStrategy()
     start=time.time()
-    with mirrored_strategy.scope():
+    if args.disable_strategy==False:
+        with mirrored_strategy.scope():
+            print(mirrored_strategy)
+            print("begin mirrored stuff")
+
+            data_start=time.time()
+            dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
+            test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
+            data_end=time.time()
+            print("seeting up data took {} seconds ".format(data_end-data_start))
+            
+            optimizer_start=time.time()
+            optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)
+            unfrozen_optimizer=keras.optimizers.Adam(learning_rate=0.00001)
+            print("optimizers took {} seconds".format(time.time()-optimizer_start))
+            #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
+            process = psutil.Process(os.getpid())
+            pct=process.memory_percent()
+            print('mem pct',pct)
+            time.sleep(5)
+            gc.collect()
+            if args.load:
+                print("loading from saved model")
+                shared_partial=tf.keras.models.load_model(save_model_folder+SHARED_ENCODER_NAME)
+                decoders=[tf.keras.models.load_model(save_model_folder+DECODER_NAME.format(i)) for i in range(n_classes)]
+                partials=[tf.keras.models.load_model(save_model_folder+UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(n_classes)]
+                unit_list=load_unit_list(shared_partial, decoders, partials)
+
+                with open(save_model_folder+"/meta_data.json","r") as src_file:
+                    start_epoch=json.load(src_file)["epoch"]
+
+                print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch))
+
+            else:
+                print("not loading from saved")
+                encoder_start=time.time()
+                print('encoder args',input_shape,args.latent_dim, args.use_residual)
+                encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual)
+                encoder_end=time.time()
+                print('getting encoder took {} time'.format(encoder_end-encoder_start))
+                mid_name=ENCODER_CONV_NAME.format(2)
+                unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name, use_residual=args.use_residual)
+                print("unit_list time took {}".format(time.time()-encoder_end))
+
+            mirron_end=time.time()
+            print("mirrored stuff took {} seconds".format(mirron_end-start))
+    else:
+        print(mirrored_strategy)
+        print("begin NOT mirrored stuff")
         
         optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)
         unfrozen_optimizer=keras.optimizers.Adam(learning_rate=0.00001)
+        print("optimizers took {} seconds".format(time.time()-start))
         #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         if args.load:
+            print("loading from saved model")
             shared_partial=tf.keras.models.load_model(save_model_folder+SHARED_ENCODER_NAME)
             decoders=[tf.keras.models.load_model(save_model_folder+DECODER_NAME.format(i)) for i in range(n_classes)]
             partials=[tf.keras.models.load_model(save_model_folder+UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(n_classes)]
@@ -82,9 +139,16 @@ def objective_unit(trial,args):
             print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch))
 
         else:
+            print("not loading from saved")
+            encoder_start=time.time()
             encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual)
+            encoder_end=time.time()
+            print('getting encoder took {} time'.format(encoder_end-encoder_start))
             mid_name=ENCODER_CONV_NAME.format(2)
             unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name, use_residual=args.use_residual)
+            print("unit_list time took {}".format(time.time()-encoder_end))
+
+        mirrored_strategy=None
 
         data_start=time.time()
         print("mirrored stuff minus data took {} seconds".format(data_start-start))
