@@ -44,7 +44,7 @@ args = parser.parse_args()
 
 tf.config.run_functions_eagerly(True)
 
-@profile
+
 def objective_unit(trial,args):
     print('eager mode = ', tf.executing_eagerly())
     print('tf.config.experimental.get_synchronous_execution() =',tf.config.experimental.get_synchronous_execution())
