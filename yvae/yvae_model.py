@@ -76,8 +76,6 @@ class SamplingLayer(Layer):
         super(SamplingLayer, self).__init__(*args,**kwargs)
 
     def call(self,args):
-        #print(args) #if this line isnt here it doesnt work i honestly do not understand it in the slightest
-        print(args, file=open('temp.txt','w+'))
         ret= sampling(args)
         return ret
 
