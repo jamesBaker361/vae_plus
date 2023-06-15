@@ -57,8 +57,6 @@ class SoftmaxWithMaxSubtraction(Layer):
         softmax_output = tf.nn.softmax(subtracted_values, axis=-1)
         return softmax_output
 
-@retrying.retry(stop_max_attempt_number=5)
-@timeout(5)
 def sampling(args):
     #print('sampling')
     #process = psutil.Process(os.getpid())
@@ -78,17 +76,25 @@ class SamplingLayer(Layer):
         super(SamplingLayer, self).__init__(*args,**kwargs)
 
     def call(self,args):
+        #print(args) #if this line isnt here it doesnt work i honestly do not understand it in the slightest
+        print(args, file=open('temp.txt','w+'))
         ret= sampling(args)
         return ret
 
-
-def get_encoder(input_shape, latent_dim,use_residual=False):
+@retrying.retry(stop_max_attempt_number=5)
+@timeout(15)
+def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False):
     def res(x, dim, name):
         if use_residual:
-            return ResidualLayer(dim,kernel_size=(3,3), name=name)(x)
+            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn, name=name)(x)
         else:
             return x
-        
+    def bn(x,name):
+        if use_bn:
+            return BatchNormalization(name=name)(x)
+        else:
+            return x
+
     inputs= Input(shape=input_shape, name=ENCODER_INPUT_NAME)
     x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(0))(inputs)
     x=tf.keras.layers.LeakyReLU()(x)
@@ -103,12 +109,11 @@ def get_encoder(input_shape, latent_dim,use_residual=False):
         count+=1
         x = res(x,dim, RESIDUAL_LAYER_NAME.format(count))
         x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
-        x=tf.keras.layers.LeakyReLU()(x)
         x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
+        x=tf.keras.layers.LeakyReLU()(x)
         bn_count+=1
         count+=1
         x = res(x,dim, RESIDUAL_LAYER_NAME.format(count))
-        #x = ResidualLayer(dim,kernel_size=(3,3), name=RESIDUAL_LAYER_NAME.format(count))(x)
         #x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         #bn_count+=1
     x = Flatten(name=FLATTEN)(x)
@@ -117,7 +122,7 @@ def get_encoder(input_shape, latent_dim,use_residual=False):
     print('intermediate layers made')
     z=SamplingLayer(name='z')
     print('sampling layer made :)')
-    x=z([z_mean, z_log_var,latent_dim])
+    x=retrying.retry(stop_max_attempt_number=5)(timeout(3)(z))([z_mean, z_log_var,latent_dim])
     print('functional outputs made')
     return Model(inputs, [z_mean, z_log_var, x], name=ENCODER_NAME)
 
@@ -222,7 +227,7 @@ def compile_unit_list(encoder_list,decoder_list):
 def get_decoder(latent_dim, image_dim,n=0,use_residual=False):
     def res(x,dim):
         if use_residual:
-            return ResidualLayer(dim,kernel_size=(3,3))(x)
+            return ResidualLayer(dim,kernel_size=(3,3),use_bn=True)(x)
         else:
             return x
         
@@ -248,7 +253,6 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False):
     x = BatchNormalization()(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = res(x, 64)
-    ###x = ResidualLayer(64,kernel_size=(3,3), )(x)
     if image_dim > 32:
         x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
@@ -256,7 +260,6 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False):
         x = BatchNormalization()(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 64)
-        ##x = ResidualLayer(64,kernel_size=(3,3), )(x)
     if image_dim > 64:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
@@ -264,7 +267,6 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False):
         x = BatchNormalization()(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
-        ##x = ResidualLayer(32,kernel_size=(3,3), )(x)
     if image_dim > 128:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
@@ -272,7 +274,6 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False):
         x = BatchNormalization()(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
-        #x = ResidualLayer(32,kernel_size=(3,3), )(x)
     if image_dim > 256:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
@@ -280,7 +281,6 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False):
         x = BatchNormalization()(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
-        #x = ResidualLayer(128,kernel_size=(3,3), )(x)
     decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
     return Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
 
@@ -336,7 +336,7 @@ def get_y_vae_list(latent_dim, input_shape, n_classes):
     return y_vae_list
 
 class ResidualLayer(keras.layers.Layer):
-    def __init__(self, filters, kernel_size, *args, **kwargs):
+    def __init__(self, filters, kernel_size,use_bn, *args, **kwargs):
         super(ResidualLayer, self).__init__(*args, **kwargs)
         self.filters = filters
         self.kernel_size = kernel_size
@@ -346,6 +346,7 @@ class ResidualLayer(keras.layers.Layer):
         self.conv2 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
         self.bn2 = tf.keras.layers.BatchNormalization()
         self.leaky_relu2=tf.keras.layers.ReLU()
+        self.use_bn=use_bn
 
     def build(self, input_shape):
         if len(input_shape)==4:
