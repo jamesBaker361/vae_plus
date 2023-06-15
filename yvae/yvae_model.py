@@ -99,7 +99,8 @@ def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False):
     x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(0))(inputs)
     x=tf.keras.layers.LeakyReLU()(x)
     x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(1))(x)
-    x = BatchNormalization(name=ENCODER_BN_NAME.format(0))(x)
+    #x = BatchNormalization(name=ENCODER_BN_NAME.format(0))(x)
+    x=bn(x, ENCODER_BN_NAME.format(0))
     x=tf.keras.layers.LeakyReLU()(x)
     count=2
     bn_count=1
@@ -109,7 +110,8 @@ def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False):
         count+=1
         x = res(x,dim, RESIDUAL_LAYER_NAME.format(count))
         x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
-        x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
+        #x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
+        x=bn(x, ENCODER_BN_NAME.format(bn_count))
         x=tf.keras.layers.LeakyReLU()(x)
         bn_count+=1
         count+=1
@@ -224,10 +226,16 @@ def compile_unit_list(encoder_list,decoder_list):
         unit_list.append(Model(encoder.input, [decoder(latents),z_mean, z_log_var ]))
     return unit_list
 
-def get_decoder(latent_dim, image_dim,n=0,use_residual=False):
+def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=True):
     def res(x,dim):
         if use_residual:
-            return ResidualLayer(dim,kernel_size=(3,3),use_bn=True)(x)
+            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn)(x)
+        else:
+            return x
+        
+    def bn(x):
+        if use_bn:
+            return BatchNormalization()(x)
         else:
             return x
         
@@ -240,45 +248,52 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False):
     x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)
     x = Conv2D(128, (3, 3), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
-    x = BatchNormalization()(x)
+    #x = BatchNormalization()(x)
+    x=bn(x)
     x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = res(x, 128)
     x = Conv2D(128, (3, 3), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
-    x = BatchNormalization()(x)
+    #x = BatchNormalization()(x)
+    x=bn(x)
     x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = Conv2D(64, (3, 3), padding='same')(x)
-    x = BatchNormalization()(x)
+    x=bn(x)
+    #x = BatchNormalization()(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = res(x, 64)
     if image_dim > 32:
         x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = Conv2D(64, (3, 3), padding='same')(x)
-        x = BatchNormalization()(x)
+        #x = BatchNormalization()(x)
+        x=bn(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 64)
     if image_dim > 64:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = Conv2D(32, (3, 3), padding='same')(x)
-        x = BatchNormalization()(x)
+        #x = BatchNormalization()(x)
+        x=bn(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
     if image_dim > 128:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = Conv2D(32, (3, 3), padding='same')(x)
-        x = BatchNormalization()(x)
+        #x = BatchNormalization()(x)
+        x=bn(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
     if image_dim > 256:
         x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = Conv2D(32, (3, 3), padding='same')(x)
-        x = BatchNormalization()(x)
+        #x = BatchNormalization()(x)
+        x=bn(x)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
     decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
