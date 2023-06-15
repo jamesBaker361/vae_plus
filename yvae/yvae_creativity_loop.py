@@ -31,6 +31,8 @@ parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
 parser.add_argument("--creativity_lambda",type=float,default=0.5, help='coefficient on creativity loss' )
 parser.add_argument("--pretrained_classifier_path",type=str,help="path to load pretrained_classifier")
+parser.add_argument("--use_bn", type=bool, default=False, help='whether to use bn in encoder/decoder')
+parser.add_argument("--node",type=str,default='unknown',help='which node this is running on')
 
 args = parser.parse_args()
 

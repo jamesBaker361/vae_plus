@@ -165,10 +165,10 @@ def get_mixed_pretrained_encoder(input_shape,latent_dim, shared_partial, mid_nam
     [z_mean, z_log, z]=shared_partial(x)
     return Model(partial.input, [z_mean, z_log, z],name=ENCODER_STEM_NAME.format(n))
 
-def get_unit_list(input_shape,latent_dim,n_classes,encoder, mid_name, use_residual=False):
+def get_unit_list(input_shape,latent_dim,n_classes,encoder, mid_name, use_residual=False,use_bn=True):
     shared_partial=get_shared_partial(encoder, mid_name, latent_dim)
     encoder_list=[get_mixed_pretrained_encoder(input_shape,latent_dim, shared_partial, mid_name,n) for n in range(n_classes)]
-    decoder_list=[get_decoder(latent_dim, input_shape[1],n,use_residual=use_residual) for n in range(n_classes)]
+    decoder_list=[get_decoder(latent_dim, input_shape[1],n,use_residual=use_residual, use_bn=use_bn) for n in range(n_classes)]
     return compile_unit_list(encoder_list,decoder_list)
 
 def build_unit_list_testing(input_shape,latent_dim,n_classes,mid_name):

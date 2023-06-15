@@ -31,6 +31,7 @@ parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse'
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
 parser.add_argument("--use_unit",help='whether to use unsupervised image to image',type=bool,default=False)
+parser.add_argument("--node",type=str,default='unknown',help='which node this is running on')
 
 args = parser.parse_args()
 
