@@ -50,6 +50,22 @@ EXTERNAL_NAME_LIST=[ INCEPTION ,MOBILE_NET,
                     EFFICIENT_NET, VGG, XCEPTION, MOBILE_LARGE, 
                     EFFICIENT_B7, EFFICIENT_B4, RESNET_50V2, RESNET_152V2]
 
+GLOROT_UNIFORM='glorot_uniform'
+GLOROT_NORMAL='glorot_normal'
+RANDOM_NORMAL='random_normal'
+RANDOM_UNIFORM='random_uniform'
+ZEROS='zeros'
+ONES='ones'
+
+initializer_dict={
+    GLOROT_UNIFORM: tf.keras.initializers.GlorotUniform(seed=1234),
+    GLOROT_NORMAL: tf.keras.initializers.GlorotNormal(seed=1234),
+    RANDOM_UNIFORM: tf.keras.initializers.RandomUniform(minval=-0.05, maxval=0.05, seed=1234),
+    RANDOM_NORMAL: tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.05, seed=1234),
+    ZEROS: tf.keras.initializers.Zeros(),
+    ONES: tf.keras.initializers.Ones()
+}
+
 
 class SoftmaxWithMaxSubtraction(Layer):
     def call(self, inputs):
@@ -82,10 +98,10 @@ class SamplingLayer(Layer):
 
 @retrying.retry(stop_max_attempt_number=5)
 @timeout(15)
-def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False,use_gn=False):
+def get_encoder(input_shape, latent_dim, initializer=initializer_dict[GLOROT_NORMAL],use_residual=False,use_bn=False,use_gn=False):
     def res(x, dim, name):
         if use_residual:
-            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn, use_gn=use_gn, name=name)(x)
+            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn, use_gn=use_gn, name=name, initializer=initializer)(x)
         else:
             return x
     def bn(x,name):
@@ -102,9 +118,9 @@ def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False,use_gn=F
 
 
     inputs= Input(shape=input_shape, name=ENCODER_INPUT_NAME)
-    x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(0))(inputs)
+    x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(0),kernel_initializer=initializer)(inputs)
     x=tf.keras.layers.LeakyReLU()(x)
-    x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(1))(x)
+    x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(1),kernel_initializer=initializer)(x)
     #x = BatchNormalization(name=ENCODER_BN_NAME.format(0))(x)
     x=bn(x, ENCODER_BN_NAME.format(0))
     x=gn(x, 8, name=ENCODER_GN_NAME.format(0))
@@ -112,11 +128,11 @@ def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False,use_gn=F
     count=2
     bn_count=1
     for dim in [64, 128,128]:
-        x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same',name=ENCODER_CONV_NAME.format(count))(x)
+        x = Conv2D(dim, (3, 3), strides=(2, 2), padding='same',name=ENCODER_CONV_NAME.format(count),kernel_initializer=initializer)(x)
         x=tf.keras.layers.LeakyReLU()(x)
         count+=1
         x = res(x,dim, RESIDUAL_LAYER_NAME.format(count))
-        x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
+        x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count),kernel_initializer=initializer)(x)
         #x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         x=bn(x, ENCODER_BN_NAME.format(bn_count))
         x =gn(x, dim//4, name=ENCODER_GN_NAME.format(bn_count))
@@ -127,8 +143,8 @@ def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False,use_gn=F
         #x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         #bn_count+=1
     x = Flatten(name=FLATTEN)(x)
-    z_mean = Dense(latent_dim, name=Z_MEAN)(x)
-    z_log_var = Dense(latent_dim, name=Z_LOG_VAR)(x)
+    z_mean = Dense(latent_dim, name=Z_MEAN, kernel_initializer=initializer)(x)
+    z_log_var = Dense(latent_dim, name=Z_LOG_VAR, kernel_initializer=initializer)(x)
     print('intermediate layers made')
     z=SamplingLayer(name='z')
     print('sampling layer made :)')
@@ -178,7 +194,7 @@ def get_mixed_pretrained_encoder(input_shape,latent_dim, shared_partial, mid_nam
 def get_unit_list(input_shape,latent_dim,n_classes,encoder, mid_name, use_residual=False,use_bn=False, use_gn=False):
     shared_partial=get_shared_partial(encoder, mid_name, latent_dim)
     encoder_list=[get_mixed_pretrained_encoder(input_shape,latent_dim, shared_partial, mid_name,n) for n in range(n_classes)]
-    decoder_list=[get_decoder(latent_dim, input_shape[1],n,use_residual=use_residual, use_bn=use_bn, use_gn=use_gn) for n in range(n_classes)]
+    decoder_list=[get_decoder(latent_dim, input_shape[1],n=n,use_residual=use_residual, use_bn=use_bn, use_gn=use_gn) for n in range(n_classes)]
     return compile_unit_list(encoder_list,decoder_list)
 
 def build_unit_list_testing(input_shape,latent_dim,n_classes,mid_name):
@@ -234,10 +250,10 @@ def compile_unit_list(encoder_list,decoder_list):
         unit_list.append(Model(encoder.input, [decoder(latents),z_mean, z_log_var ]))
     return unit_list
 
-def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=False,use_gn=False):
+def get_decoder(latent_dim, image_dim,n=0,initializer=initializer_dict[GLOROT_NORMAL],use_residual=False,use_bn=False,use_gn=False):
     def res(x,dim):
         if use_residual:
-            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn,use_gn=use_gn)(x)
+            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn,use_gn=use_gn,initializer=initializer)(x)
         else:
             return x
         
@@ -256,67 +272,20 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=False,use_gn
     decoder1_inputs = Input(shape=(latent_dim,))
 
     # Decoder 1
-    x = Dense(4*4*128)(decoder1_inputs)
+    x = Dense(4*4*128, kernel_initializer=initializer)(decoder1_inputs)
     x=tf.keras.layers.LeakyReLU()(x)
     x = Reshape((4, 4, 128))(x)
-    x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)
-    x = Conv2D(128, (3, 3), padding='same')(x)
-    x=tf.keras.layers.LeakyReLU()(x)
-    #x = BatchNormalization()(x)
-    x=bn(x)
-    x=gn(x,32)
-    x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)
-    x=tf.keras.layers.LeakyReLU()(x)
-    x = res(x, 128)
-    x = Conv2D(128, (3, 3), padding='same')(x)
-    x=tf.keras.layers.LeakyReLU()(x)
-    #x = BatchNormalization()(x)
-    x=bn(x)
-    x=gn(x,32)
-    x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
-    x=tf.keras.layers.LeakyReLU()(x)
-    x = Conv2D(64, (3, 3), padding='same')(x)
-    x=bn(x)
-    x=gn(x,32)
-    #x = BatchNormalization()(x)
-    x=tf.keras.layers.LeakyReLU()(x)
-    x = res(x, 64)
-    if image_dim > 32:
-        x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
+    for c_dim,hw_dim in zip([128,64,64,32,16,8], [8,16,32,64,128,256]):
+        x = Conv2DTranspose(c_dim, (3, 3), strides=(2, 2), padding='same',kernel_initializer=initializer)(x)
         x=tf.keras.layers.LeakyReLU()(x)
-        x = Conv2D(64, (3, 3), padding='same')(x)
+        x = Conv2D(c_dim, (3, 3), padding='same',kernel_initializer=initializer)(x)
+        x=tf.keras.layers.LeakyReLU()(x)
         #x = BatchNormalization()(x)
         x=bn(x)
-        x=gn(x,16)
-        x=tf.keras.layers.LeakyReLU()(x)
-        x = res(x, 64)
-    if image_dim > 64:
-        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
-        x=tf.keras.layers.LeakyReLU()(x)
-        x = Conv2D(32, (3, 3), padding='same')(x)
-        #x = BatchNormalization()(x)
-        x=bn(x)
-        x=gn(x,8)
-        x=tf.keras.layers.LeakyReLU()(x)
-        x = res(x, 32)
-    if image_dim > 128:
-        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
-        x=tf.keras.layers.LeakyReLU()(x)
-        x = Conv2D(32, (3, 3), padding='same')(x)
-        #x = BatchNormalization()(x)
-        x=bn(x)
-        x=gn(x,8)
-        x=tf.keras.layers.LeakyReLU()(x)
-        x = res(x, 32)
-    if image_dim > 256:
-        x = Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same')(x)
-        x=tf.keras.layers.LeakyReLU()(x)
-        x = Conv2D(32, (3, 3), padding='same')(x)
-        #x = BatchNormalization()(x)
-        x=bn(x)
-        x=gn(x,8)
-        x=tf.keras.layers.LeakyReLU()(x)
-        x = res(x, 32)
+        x=gn(x,c_dim//4)
+        x = res(x, c_dim)
+        if hw_dim>=image_dim:
+            break
     decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
     return Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
 
@@ -372,7 +341,7 @@ def get_y_vae_list(latent_dim, input_shape, n_classes):
     return y_vae_list
 
 class ResidualLayer(keras.layers.Layer):
-    def __init__(self, filters, kernel_size,use_bn,use_gn, *args, **kwargs):
+    def __init__(self, filters, kernel_size,use_bn,use_gn,initializer, *args, **kwargs):
         super(ResidualLayer, self).__init__(*args, **kwargs)
         self.filters = filters
         self.kernel_size = kernel_size
@@ -384,25 +353,24 @@ class ResidualLayer(keras.layers.Layer):
         self.leaky_relu2=tf.keras.layers.ReLU()
         self.use_bn=use_bn
         self.use_gn=use_gn
+        self.initializer=initializer
 
     def build(self, input_shape):
         if len(input_shape)==4:
             input_shape=input_shape[1:]
-        self.conv1 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
+        self.conv1 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same',kernel_initializer=self.initializer)
         self.bn1 = tf.keras.layers.BatchNormalization()
         self.gn1=GroupNormalization(self.filters//2)
         self.leaky_relu1=tf.keras.layers.ReLU()
-        self.conv2 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
+        self.conv2 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same',kernel_initializer=self.initializer)
         self.bn2 = tf.keras.layers.BatchNormalization()
         self.gn2=GroupNormalization(self.filters//2)
         self.leaky_relu2=tf.keras.layers.ReLU()
 
         if input_shape[-1] != self.filters:
-            self.shortcut = tf.keras.layers.Conv2D(self.filters, kernel_size=(1, 1), padding='same')
+            self.shortcut = tf.keras.layers.Conv2D(self.filters, kernel_size=(1, 1), padding='same',kernel_initializer=self.initializer)
         else:
             self.shortcut = tf.identity
-
-        #print('LOOK AT ME HELLO input_shape is ',input_shape)
         inputs=Input(shape=input_shape,name='res_layer inputs')
         x = self.conv1(inputs)
         if self.use_bn:
