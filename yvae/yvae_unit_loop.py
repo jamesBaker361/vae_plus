@@ -35,11 +35,12 @@ parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse'
 parser.add_argument("--log_dir_parent",type=str,default="logs/")
 parser.add_argument("--disable_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
 parser.add_argument("--fine_tuning",type=bool, default=False,help="wheter to use fine tuning training (freezing encoder initially)")
-parser.add_argument("--init_lr",type=float,default=0.001,help='lr for adam optimizer')
+parser.add_argument("--init_lr",type=float,default=0.0001,help='lr for adam optimizer')
 parser.add_argument("--unfreezing_epoch",type=int,default=-1,help='epoch to unfreeze pretrained encoder for fine tuning')
 parser.add_argument("--use_residual",type=bool,default=False)
 parser.add_argument("--use_bn", type=bool, default=False, help='whether to use batch normalization in encoder/decoder')
 parser.add_argument("--node",type=str,default='unknown',help='which node this is running on')
+parser.add_argument("--use_gn",type=bool,default=False, help='whether to use group normalization')
 
 args = parser.parse_args()
 
@@ -110,7 +111,7 @@ def objective_unit(trial,args):
                 print("not loading from saved")
                 encoder_start=time.time()
                 print('encoder args',input_shape,args.latent_dim, args.use_residual)
-                encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual, use_bn=args.use_bn)
+                encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual, use_bn=args.use_bn,use_gn=args.use_gn)
                 encoder_end=time.time()
                 print('getting encoder took {} time'.format(encoder_end-encoder_start))
                 mid_name=ENCODER_CONV_NAME.format(2)

@@ -21,6 +21,7 @@ SHARED_ENCODER_NAME='shared_encoder'
 ENCODER_INPUT_NAME='encoder_input'
 UNSHARED_PARTIAL_ENCODER_NAME='unshared_partial_encoder_{}'
 ENCODER_BN_NAME='encoder_bn_{}'
+ENCODER_GN_NAME='encoder_gn_{}'
 RESIDUAL_LAYER_NAME='residual_layer_{}'
 ENCODER_STEM_NAME='encoder_stem_{}'
 ENCODER_CONV_NAME='encoder_conv_{}'
@@ -81,10 +82,10 @@ class SamplingLayer(Layer):
 
 @retrying.retry(stop_max_attempt_number=5)
 @timeout(15)
-def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False):
+def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False,use_gn=False):
     def res(x, dim, name):
         if use_residual:
-            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn, name=name)(x)
+            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn, use_gn=use_gn, name=name)(x)
         else:
             return x
     def bn(x,name):
@@ -93,12 +94,20 @@ def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False):
         else:
             return x
 
+    def gn(x, groups,name):
+        if use_gn:
+            return GroupNormalization(groups=groups,name=name)(x)
+        else:
+            return x
+
+
     inputs= Input(shape=input_shape, name=ENCODER_INPUT_NAME)
     x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(0))(inputs)
     x=tf.keras.layers.LeakyReLU()(x)
     x = Conv2D(32, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(1))(x)
     #x = BatchNormalization(name=ENCODER_BN_NAME.format(0))(x)
     x=bn(x, ENCODER_BN_NAME.format(0))
+    x=gn(x, 8, name=ENCODER_GN_NAME.format(0))
     x=tf.keras.layers.LeakyReLU()(x)
     count=2
     bn_count=1
@@ -110,6 +119,7 @@ def get_encoder(input_shape, latent_dim,use_residual=False,use_bn=False):
         x = Conv2D(dim, (3, 3), padding='same', name=ENCODER_CONV_NAME.format(count))(x)
         #x = BatchNormalization(name=ENCODER_BN_NAME.format(bn_count))(x)
         x=bn(x, ENCODER_BN_NAME.format(bn_count))
+        x =gn(x, dim//4, name=ENCODER_GN_NAME.format(bn_count))
         x=tf.keras.layers.LeakyReLU()(x)
         bn_count+=1
         count+=1
@@ -165,10 +175,10 @@ def get_mixed_pretrained_encoder(input_shape,latent_dim, shared_partial, mid_nam
     [z_mean, z_log, z]=shared_partial(x)
     return Model(partial.input, [z_mean, z_log, z],name=ENCODER_STEM_NAME.format(n))
 
-def get_unit_list(input_shape,latent_dim,n_classes,encoder, mid_name, use_residual=False,use_bn=True):
+def get_unit_list(input_shape,latent_dim,n_classes,encoder, mid_name, use_residual=False,use_bn=False, use_gn=False):
     shared_partial=get_shared_partial(encoder, mid_name, latent_dim)
     encoder_list=[get_mixed_pretrained_encoder(input_shape,latent_dim, shared_partial, mid_name,n) for n in range(n_classes)]
-    decoder_list=[get_decoder(latent_dim, input_shape[1],n,use_residual=use_residual, use_bn=use_bn) for n in range(n_classes)]
+    decoder_list=[get_decoder(latent_dim, input_shape[1],n,use_residual=use_residual, use_bn=use_bn, use_gn=use_gn) for n in range(n_classes)]
     return compile_unit_list(encoder_list,decoder_list)
 
 def build_unit_list_testing(input_shape,latent_dim,n_classes,mid_name):
@@ -224,16 +234,22 @@ def compile_unit_list(encoder_list,decoder_list):
         unit_list.append(Model(encoder.input, [decoder(latents),z_mean, z_log_var ]))
     return unit_list
 
-def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=True):
+def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=False,use_gn=False):
     def res(x,dim):
         if use_residual:
-            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn)(x)
+            return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn,use_gn=use_gn)(x)
         else:
             return x
         
     def bn(x):
         if use_bn:
             return BatchNormalization()(x)
+        else:
+            return x
+        
+    def gn(x,groups):
+        if use_gn:
+            return GroupNormalization(groups)(x)
         else:
             return x
         
@@ -248,6 +264,7 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=True):
     x=tf.keras.layers.LeakyReLU()(x)
     #x = BatchNormalization()(x)
     x=bn(x)
+    x=gn(x,32)
     x = Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = res(x, 128)
@@ -255,10 +272,12 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=True):
     x=tf.keras.layers.LeakyReLU()(x)
     #x = BatchNormalization()(x)
     x=bn(x)
+    x=gn(x,32)
     x = Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = Conv2D(64, (3, 3), padding='same')(x)
     x=bn(x)
+    x=gn(x,32)
     #x = BatchNormalization()(x)
     x=tf.keras.layers.LeakyReLU()(x)
     x = res(x, 64)
@@ -268,6 +287,7 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=True):
         x = Conv2D(64, (3, 3), padding='same')(x)
         #x = BatchNormalization()(x)
         x=bn(x)
+        x=gn(x,16)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 64)
     if image_dim > 64:
@@ -276,6 +296,7 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=True):
         x = Conv2D(32, (3, 3), padding='same')(x)
         #x = BatchNormalization()(x)
         x=bn(x)
+        x=gn(x,8)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
     if image_dim > 128:
@@ -284,6 +305,7 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=True):
         x = Conv2D(32, (3, 3), padding='same')(x)
         #x = BatchNormalization()(x)
         x=bn(x)
+        x=gn(x,8)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
     if image_dim > 256:
@@ -292,6 +314,7 @@ def get_decoder(latent_dim, image_dim,n=0,use_residual=False,use_bn=True):
         x = Conv2D(32, (3, 3), padding='same')(x)
         #x = BatchNormalization()(x)
         x=bn(x)
+        x=gn(x,8)
         x=tf.keras.layers.LeakyReLU()(x)
         x = res(x, 32)
     decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
@@ -349,7 +372,7 @@ def get_y_vae_list(latent_dim, input_shape, n_classes):
     return y_vae_list
 
 class ResidualLayer(keras.layers.Layer):
-    def __init__(self, filters, kernel_size,use_bn, *args, **kwargs):
+    def __init__(self, filters, kernel_size,use_bn,use_gn, *args, **kwargs):
         super(ResidualLayer, self).__init__(*args, **kwargs)
         self.filters = filters
         self.kernel_size = kernel_size
@@ -360,15 +383,18 @@ class ResidualLayer(keras.layers.Layer):
         self.bn2 = tf.keras.layers.BatchNormalization()
         self.leaky_relu2=tf.keras.layers.ReLU()
         self.use_bn=use_bn
+        self.use_gn=use_gn
 
     def build(self, input_shape):
         if len(input_shape)==4:
             input_shape=input_shape[1:]
         self.conv1 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
         self.bn1 = tf.keras.layers.BatchNormalization()
+        self.gn1=GroupNormalization(self.filters//2)
         self.leaky_relu1=tf.keras.layers.ReLU()
         self.conv2 = tf.keras.layers.Conv2D(self.filters, self.kernel_size, padding='same')
         self.bn2 = tf.keras.layers.BatchNormalization()
+        self.gn2=GroupNormalization(self.filters//2)
         self.leaky_relu2=tf.keras.layers.ReLU()
 
         if input_shape[-1] != self.filters:
@@ -379,10 +405,16 @@ class ResidualLayer(keras.layers.Layer):
         #print('LOOK AT ME HELLO input_shape is ',input_shape)
         inputs=Input(shape=input_shape,name='res_layer inputs')
         x = self.conv1(inputs)
-        x = self.bn1(x)
+        if self.use_bn:
+            x = self.bn1(x)
+        if self.use_gn:
+            x=self.gn1(x)
         x = self.leaky_relu1(x)
         x = self.conv2(x)
-        x = self.bn2(x)
+        if self.use_bn:
+            x = self.bn2(x)
+        if self.use_gn:
+            x=self.gn2(x)
 
         shortcut = self.shortcut(inputs)
         x = tf.keras.layers.add([x, shortcut])
@@ -394,7 +426,35 @@ class ResidualLayer(keras.layers.Layer):
         return self.internal_model(inputs,*args, **kwargs)
 
 
+class GroupNormalization(Layer):
+    def __init__(self, groups, *args, **kwargs):
+        super(GroupNormalization, self).__init__(*args,**kwargs)
+        self.groups = groups
 
+    def build(self, input_shape):
+        self.gamma = self.add_weight(name='gamma', shape=(input_shape[-1],),
+                                     initializer='ones', trainable=True)
+        self.beta = self.add_weight(name='beta', shape=(input_shape[-1],),
+                                    initializer='zeros', trainable=True)
+        super(GroupNormalization, self).build(input_shape)
+
+    def call(self, inputs,*args,**kwargs):
+        input_shape = tf.shape(inputs)
+        N=input_shape[0]
+        H=input_shape[1]
+        W=input_shape[2]
+        C=input_shape[-1]
+        group_shape = (N,H,W,self.groups, C//self.groups)
+        print(group_shape, input_shape)
+        reshaped_inputs=tf.reshape(inputs, group_shape)
+        group_mean, group_variance = tf.nn.moments(reshaped_inputs, [1, 2, 4], keepdims=True)
+        normalized_inputs = (reshaped_inputs - group_mean) / tf.sqrt(group_variance + 1e-5)
+        normalized_inputs = tf.reshape(normalized_inputs, input_shape)
+        outputs = self.gamma * normalized_inputs + self.beta
+        return outputs
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
 
 
 def residual_block(input_tensor, filters, kernel_size):
