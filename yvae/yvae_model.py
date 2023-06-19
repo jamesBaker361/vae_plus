@@ -413,7 +413,6 @@ class GroupNormalization(Layer):
         W=input_shape[2]
         C=input_shape[-1]
         group_shape = (N,H,W,self.groups, C//self.groups)
-        print(group_shape, input_shape)
         reshaped_inputs=tf.reshape(inputs, group_shape)
         group_mean, group_variance = tf.nn.moments(reshaped_inputs, [1, 2, 4], keepdims=True)
         normalized_inputs = (reshaped_inputs - group_mean) / tf.sqrt(group_variance + 1e-5)
