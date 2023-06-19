@@ -123,6 +123,21 @@ class VAE_Trainer:
     def epoch_setup(self,e):
         pass
 
+    def test_epoch(self,e):
+        start = time.time()
+        for d,dataset in enumerate(self.test_dataset_list):
+            vae=self.vae_list[d]
+            for batch in dataset:
+                if self.mirrored_strategy is None:
+                    total_loss=self.test_step(batch,vae)
+                else:
+                    total_loss=self.distributed_test_step(batch,vae)
+        print('\ntest epoch {} mean: {} '.format(e,self.test_loss.result()))
+        print ('\nTime taken for test epoch {} is {} sec\n'.format(e,time.time()-start))
+        with self.summary_writer.as_default():
+            for name,metric in self.test_metrics.items():
+                tf.summary.scalar(name, metric.result(), step=e)
+
     def train_loop(self):
         print('train loop begin')
         for e in range(self.start_epoch,self.epochs):
@@ -146,19 +161,8 @@ class VAE_Trainer:
             for callback in self.callbacks:
                 callback(e)
             if e%TEST_INTERVAL==0:
-                start = time.time()
-                for d,dataset in enumerate(self.test_dataset_list):
-                    vae=self.vae_list[d]
-                    for batch in dataset:
-                        if self.mirrored_strategy is None:
-                            total_loss=self.test_step(batch,vae)
-                        else:
-                            total_loss=self.distributed_test_step(batch,vae)
-                print('\ntest epoch {} mean: {} '.format(e,self.test_loss.result()))
-                print ('\nTime taken for test epoch {} is {} sec\n'.format(e,time.time()-start))
-                with self.summary_writer.as_default():
-                    for name,metric in self.test_metrics.items():
-                        tf.summary.scalar(name, metric.result(), step=e)
+                self.test_epoch(e)
+        self.test_epoch(e)
     
     
     def generate_images(self,batch_size):
