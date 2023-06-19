@@ -19,7 +19,7 @@ def load_all_datasets():
 def prod_dataset_test(image_dim=128):
     print('image dim ', image_dim)
     batch_size=2
-    dataset_names_tiny=[["jlbaker361/flickr_humans_5k" ,"jlbaker361/anime_faces_5k", "jlbaker361/artfaces_padded_32"]]
+    dataset_names_tiny=["jlbaker361/flickr_humans_5k" ,"jlbaker361/anime_faces_5k", "jlbaker361/artfaces_padded_32"]
     dataset_names=["jlbaker361/flickr_humans_10k" ,"jlbaker361/anime_faces_10k", "jlbaker361/artfaces_padded"]
     dataset_names_medium=["jlbaker361/flickr_humans_20k" ,"jlbaker361/anime_faces_20k", "jlbaker361/artfaces_padded"]
     dataset_names_big=["jlbaker361/flickr_humans" ,"jlbaker361/anime_faces_50k", "jlbaker361/artfaces_padded"]
