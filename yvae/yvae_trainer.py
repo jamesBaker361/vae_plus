@@ -202,6 +202,12 @@ class VAE_Unit_Trainer(VAE_Trainer):
                 self.setup_fid_metrics()
         else:
             self.setup_fid_metrics()
+        
+        self.test_metrics={
+            **self.test_metrics,
+            **self.test_gen_fid_dict,
+            **self.test_transfer_fid_dict
+        }
             
 
     def setup_fid_metrics(self):
@@ -223,6 +229,13 @@ class VAE_Unit_Trainer(VAE_Trainer):
             self.shared_partial.trainable=True
             for p in self.partials:
                 p.trainable=True
+
+    def epoch_end(self,e):
+        for x in range(len(self.dataset_names)):
+            for y in range(len(self.dataset_names)):
+                if y==x:
+                    continue
+                
 
     def style_transfer(self,img,n):
         encoder=self.vae_list[n].get_layer(ENCODER_STEM_NAME.format(n))
