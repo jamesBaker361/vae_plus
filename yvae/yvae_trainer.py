@@ -163,7 +163,6 @@ class VAE_Trainer:
     
     def generate_images(self,batch_size):
         noise_shape=self.decoders[0].input_shape[1:]
-        print(noise_shape)
         noise=tf.random.normal((batch_size, *noise_shape))
         return [decoder(noise) for decoder in self.decoders]
 
