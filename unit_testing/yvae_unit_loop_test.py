@@ -49,3 +49,11 @@ if __name__=='__main__':
         objective_unit_test(dim)
         objective_unit_test_save(dim)
         obective_unit_test_load(dim)
+        args.use_residual=True
+        objective_unit_test(dim)
+        objective_unit_test_save(dim)
+        obective_unit_test_load(dim)
+        args.use_gn=True
+        objective_unit_test(dim)
+        objective_unit_test_save(dim)
+        obective_unit_test_load(dim)

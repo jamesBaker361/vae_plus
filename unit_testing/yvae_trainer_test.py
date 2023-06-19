@@ -146,6 +146,23 @@ def VAE_Trainer_Unit_fine_tune_test(
     assert trainer.optimizer.learning_rate.numpy()==unfrozen_optimizer.learning_rate.numpy()
     
 
+def VAE_Trainer_Unit_test_residual(input_shape=(32,32,3),
+    latent_dim=10,
+    n_classes=3,
+    mid_name='encoder_conv_4',
+    epochs=1):
+    pretrained_encoder=get_encoder(input_shape, latent_dim,use_residual=True)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
+    kl_loss_scale=1.0
+    callbacks=[]
+    start_epoch=0
+    trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,
+                        mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
+    print('69 nice')
+    trainer.train_loop()
 
 if __name__ =='__main__':
     for img_dim in [32,256]:

@@ -65,8 +65,32 @@ def preprocessing_layer_test(input_shape=(64,64,3)):
     )
     model(tf.random.normal((1,*input_shape)))
 
+def get_encoder_test(input_shape=(32,32,3), latent_dim=8):
+    for use_bn in [True,False]:
+        for use_gn in [True,False]:
+            for use_residual in [True,False]:
+                encoder=get_encoder(input_shape=input_shape, latent_dim=latent_dim,
+                                    use_residual=use_residual,
+                                    use_bn=use_bn,
+                                    use_gn=use_gn)
+                encoder(tf.random.normal((1,*input_shape)))
 
+def get_decoder_test(image_dim=32, latent_dim=8):
+    for use_bn in [True,False]:
+        for use_gn in [True,False]:
+            for use_residual in [True,False]:
+                decoder=get_decoder(latent_dim,image_dim,
+                                    use_residual=use_residual,
+                                    use_bn=use_bn,
+                                    use_gn=use_gn)
+                print('use_bn {} use_gn {} use_residual {}'.format(use_bn, use_gn, use_residual))
+                decoder(tf.random.normal((1,latent_dim)))
 
+def get_unit_list_test(input_shape=(32,32,3), latent_dim=8):
+    for use_bn in [True,False]:
+        for use_gn in [True,False]:
+            for use_residual in [True,False]:
+                pass
 
 if __name__ =='__main__':
     preprocessing_layer_test()
@@ -79,4 +103,6 @@ if __name__ =='__main__':
     get_unit_list_from_creative_test()
     get_resnet_classifier_test()
     get_external_classifier_test()
+    get_decoder_test()
+    get_encoder_test()
     print("all done :)))")
