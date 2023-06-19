@@ -12,35 +12,13 @@ from datetime import datetime, timezone
 import psutil
 import gc
 from memory_profiler import profile
+from yvae_parser_setup import *
 
 from random import randrange
 import json
 
 parser = argparse.ArgumentParser(description='get some args')
-parser.add_argument("--epochs",type=int,help="training epochs", default=2)
-parser.add_argument("--test",type=bool, default=False)
-parser.add_argument("--batch_size", type=int,default=1) 
-parser.add_argument("--save_img_parent",type=str,default="/home/jlb638/Desktop/vae_plus/gen_imgs/yvae/")
-parser.add_argument("--name",type=str,default="yvae_{}".format(str(datetime.now(timezone.utc))))
-parser.add_argument("--save_model_parent", type=str,default="../../../../../scratch/jlb638/yvae_models/yvae/")
-parser.add_argument("--dataset_names",nargs="+",default=["jlbaker361/flickr_humans_10k", "jlbaker361/anime_faces_10k" ])
-parser.add_argument("--load", type=bool, default=False, help="whether to load previous model if possible")
-parser.add_argument("--save", type=bool, default=False, help='whether to save model')
-parser.add_argument("--image_dim",type=int, default=128)
-parser.add_argument("--interval",type=int,default=10,help='save model every interval # of epochs')
-parser.add_argument("--threshold",type=int,default=50,help='epoch threshold for when to start saving')
-parser.add_argument("--latent_dim",type=int, default=32,help='latent dim for encoding')
-parser.add_argument("--kl_loss_scale",type=float,default=1.0,help='scale of kl_loss for optimizing')
-parser.add_argument("--reconstruction_loss_function_name",type=str,default='mse')
-parser.add_argument("--log_dir_parent",type=str,default="logs/")
-parser.add_argument("--disable_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
-parser.add_argument("--fine_tuning",type=bool, default=False,help="wheter to use fine tuning training (freezing encoder initially)")
-parser.add_argument("--init_lr",type=float,default=0.0001,help='lr for adam optimizer')
-parser.add_argument("--unfreezing_epoch",type=int,default=-1,help='epoch to unfreeze pretrained encoder for fine tuning')
-parser.add_argument("--use_residual",type=bool,default=False)
-parser.add_argument("--use_bn", type=bool, default=False, help='whether to use batch normalization in encoder/decoder')
-parser.add_argument("--node",type=str,default='unknown',help='which node this is running on')
-parser.add_argument("--use_gn",type=bool,default=False, help='whether to use group normalization')
+add_arguments(parser)
 
 args = parser.parse_args()
 
