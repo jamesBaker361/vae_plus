@@ -15,8 +15,8 @@ def YVAE_Trainer_test(
     epochs=1):
     reconstruction_loss_function_name='mse'
     y_vae_list=get_y_vae_list(latent_dim, input_shape,n)
-    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
-    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["dataset_a","dataset_b","dataset_c"]}
     optimizer=keras.optimizers.Adam(learning_rate=0.0001)
     trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name,log_dir=LOG_DIR)
     trainer.train_loop()
@@ -28,8 +28,8 @@ def YVAE_Trainer_test_reconstruction(
     epochs=3,
     reconstruction_loss_function_name='mse'):
     y_vae_list=get_y_vae_list(latent_dim, input_shape,n)
-    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
-    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["dataset_a","dataset_b","dataset_c"]}
     optimizer=keras.optimizers.Adam(learning_rate=0.0001)
     trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer, reconstruction_loss_function_name, log_dir=LOG_DIR)
     trainer.train_loop()
@@ -41,8 +41,8 @@ def YVAE_Trainer_generate_images_test(
     epochs=1):
     reconstruction_loss_function_name='mse'
     y_vae_list=get_y_vae_list(latent_dim, input_shape,n)
-    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
-    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["a","b","c"]}
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n) for name in ["dataset_a","dataset_b","dataset_c"]}
     optimizer=keras.optimizers.Adam(learning_rate=0.0001)
     trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict,test_dataset_dict,optimizer,reconstruction_loss_function_name, log_dir=LOG_DIR)
     trainer.generate_images(2)
@@ -54,15 +54,14 @@ def VAE_Trainer_Unit_test(input_shape=(32,32,3),
     epochs=1):
     pretrained_encoder=get_encoder(input_shape, latent_dim)
     unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
-    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
-    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
     kl_loss_scale=1.0
     callbacks=[]
     start_epoch=0
     trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,
                         mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
-    print('69 nice')
     trainer.train_loop()
 
 def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
@@ -72,8 +71,8 @@ def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
     epochs=1):
     pretrained_encoder=get_encoder(input_shape, latent_dim)
     unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
-    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
-    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
     kl_loss_scale=1.0
     callbacks=[]
@@ -88,8 +87,8 @@ def VAE_Trainer_Unit_style_transfer_test(input_shape=(32,32,3),
     epochs=1):
     pretrained_encoder=get_encoder(input_shape, latent_dim)
     unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
-    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
-    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
     kl_loss_scale=1.0
     callbacks=[]
@@ -126,8 +125,8 @@ def VAE_Trainer_Unit_fine_tune_test(
 ):
     pretrained_encoder=get_encoder(input_shape, latent_dim)
     unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
-    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
-    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
     unfrozen_optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001)
     kl_loss_scale=1.0
@@ -153,8 +152,8 @@ def VAE_Trainer_Unit_test_residual(input_shape=(32,32,3),
     epochs=1):
     pretrained_encoder=get_encoder(input_shape, latent_dim,use_residual=True)
     unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
-    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
-    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["a","b","c"]}
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
     kl_loss_scale=1.0
     callbacks=[]

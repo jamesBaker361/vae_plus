@@ -8,7 +8,9 @@ import tensorflow as tf
 def calculate_fid_test(initial_shape=(64,64,3),input_shape=(128,128,3),batch_size=4):
     images1=tf.random.normal((batch_size,*initial_shape))
     images2=tf.random.normal((batch_size,*initial_shape))
-    fid=calculate_fid(input_shape, images1, images2)
+    mu1, sigma1=calculate_mu_sig(input_shape,images1)
+    mu2, sigma2=calculate_mu_sig(input_shape,images2)
+    fid=calculate_fid(input_shape, mu1, sigma1,mu2, sigma2)
     print(fid)
 
 def  calculate_fid_test_real(initial_shape=(64,64,3),input_shape=(128,128,3),batch_size=4):
@@ -22,7 +24,9 @@ def  calculate_fid_test_real(initial_shape=(64,64,3),input_shape=(128,128,3),bat
             name2=names[y]
             images1=samples[name1]
             images2=samples[name2]
-            fid=calculate_fid(input_shape, images1, images2)
+            mu1, sigma1=calculate_mu_sig(input_shape,images1)
+            mu2, sigma2=calculate_mu_sig(input_shape,images2)
+            fid=calculate_fid(input_shape, mu1, sigma1,mu2, sigma2)
             print(name1, name2, fid)
 
 
