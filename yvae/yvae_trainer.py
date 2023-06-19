@@ -6,12 +6,17 @@ import time
 TRAIN='/train'
 TEST='/test'
 TEST_INTERVAL=10
+FID_BATCH_SIZE=4
 TRAIN_LOSS='train_loss'
 TEST_LOSS='test_loss'
 TRAIN_RECONSTRUCTION_LOSS='train_reconstruction_loss'
 TEST_RECONSTRUCTION_LOSS='test_reconstruction_loss'
 TRAIN_CREATIVITY_LOSS='train_creativity_loss'
 TEST_CREATIVITY_LOSS='test_creativity_loss'
+TRAIN_GEN_FID='train_gen_fid_{}'
+TRAIN_TRANSFER_FID='train_transfer_fid_{}_to_{}'
+TEST_GEN_FID='test_gen_fid_{}'
+TEST_TRANSFER_FID='test_transfer_fid_{}_to_{}'
 
 def get_compute_kl_loss(kl_loss_scale, global_batch_size):
     def _compute_kl_loss(z_mean, z_log_var):
@@ -34,7 +39,7 @@ def get_compute_creativity_loss(reconstruction_loss_function, creativity_lambda,
     return _compute_creativity_loss
 
 class VAE_Trainer:
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale,data_augmentation, callbacks=[],start_epoch=0):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale,data_augmentation,callbacks=[],start_epoch=0):
         self.vae_list=vae_list
         self.decoders=[vae_list[i].get_layer(DECODER_NAME.format(i)) for i in range(len(vae_list))]
         self.epochs=epochs
@@ -123,6 +128,9 @@ class VAE_Trainer:
     def epoch_setup(self,e):
         pass
 
+    def epoch_end(self,e):
+        pass
+
     def test_epoch(self,e):
         start = time.time()
         for d,dataset in enumerate(self.test_dataset_list):
@@ -162,6 +170,7 @@ class VAE_Trainer:
                 callback(e)
             if e%TEST_INTERVAL==0:
                 self.test_epoch(e)
+            self.epoch_end(e)
         self.test_epoch(e)
     
     
@@ -170,8 +179,12 @@ class VAE_Trainer:
         noise=tf.random.normal((batch_size, *noise_shape))
         return [decoder(noise) for decoder in self.decoders]
 
+    def generate_images_calculate_fid(self,batch_size):
+        generated=self.generate_images(batch_size)
+
+
 class VAE_Unit_Trainer(VAE_Trainer):
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, unfrozen_optimizer=None, data_augmentation=False):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, unfrozen_optimizer=None, data_augmentation=False,fid_batch_size=4):
         super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size,data_augmentation=data_augmentation)
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
@@ -179,6 +192,7 @@ class VAE_Unit_Trainer(VAE_Trainer):
         self.unfreezing_epoch=unfreezing_epoch
         self.fine_tuning = fine_tuning
         self.unfrozen_optimizer=unfrozen_optimizer
+        self.fid_batch_size=fid_batch_size
         if self.fine_tuning:
             self.shared_partial.trainable=False
             for p in self.partials:
@@ -190,6 +204,8 @@ class VAE_Unit_Trainer(VAE_Trainer):
             self.shared_partial.trainable=True
             for p in self.partials:
                 p.trainable=True
+
+    
 
     def style_transfer(self,img,n):
         encoder=self.vae_list[n].get_layer(ENCODER_STEM_NAME.format(n))
