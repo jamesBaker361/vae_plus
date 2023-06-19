@@ -198,20 +198,24 @@ class VAE_Unit_Trainer(VAE_Trainer):
             for p in self.partials:
                 p.trainable=False
         if mirrored_strategy is not None:
-            test_gen_fid_dict={
+            with mirrored_strategy.scope():
+                self.setup_fid_metrics()
+        else:
+            self.setup_fid_metrics()
+            
+
+    def setup_fid_metrics(self):
+        self.test_gen_fid_dict={
                 TEST_GEN_FID.format(name) : tf.keras.metrics.Mean(TEST_GEN_FID.format(name), dtype=tf.float32) for name in self.dataset_names
-            }
-            test_transfer_fid_dict={
-
-            }
-            for x in range(len(self.dataset_names)):
-                for y in range(len(self.dataset_names)):
-                    if y==x:
-                        continue
-                    src=self.dataset_names[x] #initial domain
-                    target=self.dataset_names[y] #target domain (style)
-                    test_transfer_fid_dict[TEST_TRANSFER_FID.format(src,target)]= tf.keras.metrics.Mean(TEST_TRANSFER_FID.format(src,target), dtype=tf.float32)
-
+        }
+        self.test_transfer_fid_dict={}
+        for x in range(len(self.dataset_names)):
+            for y in range(len(self.dataset_names)):
+                if y==x:
+                    continue
+                src=self.dataset_names[x] #initial domain
+                target=self.dataset_names[y] #target domain (style)
+                self.test_transfer_fid_dict[TEST_TRANSFER_FID.format(src,target)]= tf.keras.metrics.Mean(TEST_TRANSFER_FID.format(src,target), dtype=tf.float32)
 
     def epoch_setup(self,e):
         if self.fine_tuning and self.unfreezing_epoch<=e:
