@@ -197,6 +197,21 @@ class VAE_Unit_Trainer(VAE_Trainer):
             self.shared_partial.trainable=False
             for p in self.partials:
                 p.trainable=False
+        if mirrored_strategy is not None:
+            test_gen_fid_dict={
+                TEST_GEN_FID.format(name) : tf.keras.metrics.Mean(TEST_GEN_FID.format(name), dtype=tf.float32) for name in self.dataset_names
+            }
+            test_transfer_fid_dict={
+
+            }
+            for x in range(len(self.dataset_names)):
+                for y in range(len(self.dataset_names)):
+                    if y==x:
+                        continue
+                    src=self.dataset_names[x] #initial domain
+                    target=self.dataset_names[y] #target domain (style)
+                    test_transfer_fid_dict[TEST_TRANSFER_FID.format(src,target)]= tf.keras.metrics.Mean(TEST_TRANSFER_FID.format(src,target), dtype=tf.float32)
+
 
     def epoch_setup(self,e):
         if self.fine_tuning and self.unfreezing_epoch<=e:
@@ -204,8 +219,6 @@ class VAE_Unit_Trainer(VAE_Trainer):
             self.shared_partial.trainable=True
             for p in self.partials:
                 p.trainable=True
-
-    
 
     def style_transfer(self,img,n):
         encoder=self.vae_list[n].get_layer(ENCODER_STEM_NAME.format(n))
