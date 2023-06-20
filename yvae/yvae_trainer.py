@@ -2,6 +2,9 @@ from yvae_model import *
 import numpy as np
 import tensorflow as tf
 import time
+import sys
+sys.path.append('evaluation')
+from fid_src import *
 
 TRAIN='/train'
 TEST='/test'
@@ -208,6 +211,13 @@ class VAE_Unit_Trainer(VAE_Trainer):
             **self.test_gen_fid_dict,
             **self.test_transfer_fid_dict
         }
+        self.statistics={}
+        for name,dataset in test_dataset_dict.items():
+            images=tf.concat([d for d in dataset],axis=0)[:self.fid_batch_size]
+            input_shape=(128,128,3)
+            mu,sig=calculate_mu_sig(input_shape,images)
+            self.statistics[name]=(mu,sig)
+
             
 
     def setup_fid_metrics(self):
@@ -231,10 +241,14 @@ class VAE_Unit_Trainer(VAE_Trainer):
                 p.trainable=True
 
     def epoch_end(self,e):
+        self.calculate_fid()
+
+    def calculate_fid(self):
         for x in range(len(self.dataset_names)):
+            mu1,sig1=self.statistics[self.dataset_names[x]]
             for y in range(len(self.dataset_names)):
                 if y==x:
-                    continue
+                    pass
                 
 
     def style_transfer(self,img,n):
