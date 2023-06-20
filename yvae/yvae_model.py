@@ -35,6 +35,8 @@ RESNET_CLASSIFIER='resnet_classifier'
 
 FLATTEN='flatten'
 
+DEFAULT_DATASET_NAME='default_name'
+
 MOBILE_NET='mobile' #ass
 MOBILE_LARGE="mobilenet_large"
 EFFICIENT_NET='efficient' #ass
@@ -250,7 +252,7 @@ def compile_unit_list(encoder_list,decoder_list):
         unit_list.append(Model(encoder.input, [decoder(latents),z_mean, z_log_var ]))
     return unit_list
 
-def get_decoder(latent_dim, image_dim,n=0,initializer=initializer_dict[GLOROT_NORMAL],use_residual=False,use_bn=False,use_gn=False):
+def get_decoder(latent_dim, image_dim,n=0,initializer=initializer_dict[GLOROT_NORMAL],use_residual=False,use_bn=False,use_gn=False,dataset_name=DEFAULT_DATASET_NAME):
     def res(x,dim):
         if use_residual:
             return ResidualLayer(dim,kernel_size=(3,3),use_bn=use_bn,use_gn=use_gn,initializer=initializer)(x)
@@ -287,7 +289,9 @@ def get_decoder(latent_dim, image_dim,n=0,initializer=initializer_dict[GLOROT_NO
         if hw_dim>=image_dim:
             break
     decoder1_outputs = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
-    return Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
+    model= Model(decoder1_inputs, decoder1_outputs,name='decoder_{}'.format(n))
+    model.dataset_name=dataset_name
+    return model
 
 def get_classification_head(class_latent_dim,n_classes):
     inputs = Input(shape=(class_latent_dim,))
