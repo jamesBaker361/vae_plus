@@ -64,6 +64,25 @@ def VAE_Trainer_Unit_test(input_shape=(32,32,3),
                         mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch)
     trainer.train_loop()
 
+def VAE_Trainer_Unit_test_fid(input_shape=(32,32,3),
+    latent_dim=10,
+    n_classes=3,
+    mid_name='encoder_conv_4',
+    fid_batch_size=4
+    epochs=2):
+    pretrained_encoder=get_encoder(input_shape, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n_classes,pretrained_encoder, mid_name)
+    dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
+    test_dataset_dict={name:tf.data.Dataset.from_tensor_slices(tf.random.normal((8,*input_shape))).batch(4) for _ in range(n_classes) for name in ["dataset_a","dataset_b","dataset_c"]}
+    optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001)
+    kl_loss_scale=1.0
+    callbacks=[]
+    start_epoch=0
+    trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,
+                        mirrored_strategy=None,kl_loss_scale=kl_loss_scale,callbacks=callbacks,
+                        start_epoch=start_epoch,fid_batch_size=fid_batch_size, fid_interval=1)
+    trainer.train_loop()
+
 def VAE_Trainer_Unit_generate_imgs_test(input_shape=(32,32,3),
     latent_dim=10,
     n_classes=3,
@@ -167,13 +186,16 @@ if __name__ =='__main__':
     for img_dim in [32,256]:
         shape=(img_dim, img_dim, 3)
         print(shape)
+        VAE_Trainer_Unit_test_fid(input_shape=shape)
         YVAE_Trainer_test(input_shape=shape)
         YVAE_Trainer_generate_images_test(input_shape=shape)
         VAE_Trainer_Unit_test(input_shape=shape)
+        VAE_Trainer_Unit_test_fid(input_shape=shape)
         VAE_Trainer_Unit_generate_imgs_test(input_shape=shape)
         VAE_Creativity_Trainer_test(input_shape=shape)
         VAE_Trainer_Unit_style_transfer_test(input_shape=shape)
         VAE_Trainer_Unit_fine_tune_test(input_shape=shape)
+    exit()
     for loss in ['mse', 'binary_crossentropy', 'log_cosh','huber']:
         YVAE_Trainer_test_reconstruction(reconstruction_loss_function_name=loss)
     print("all done! :)")

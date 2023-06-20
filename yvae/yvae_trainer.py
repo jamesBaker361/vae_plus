@@ -49,6 +49,8 @@ class VAE_Trainer:
         self.dataset_names=[k for k in dataset_dict.keys()]
         self.dataset_list=[v for v in dataset_dict.values()]
         self.test_dataset_list=[v for v in test_dataset_dict.values()]
+        self.dataset_dict=dataset_dict
+        self.test_dataset_dict=test_dataset_dict
         self.optimizer=optimizer
         self.callbacks=callbacks
         self.start_epoch=start_epoch
@@ -148,6 +150,7 @@ class VAE_Trainer:
         with self.summary_writer.as_default():
             for name,metric in self.test_metrics.items():
                 tf.summary.scalar(name, metric.result(), step=e)
+                print("\t test {} : {}".format(name, metric.result()))
 
     def train_loop(self):
         print('train loop begin')
@@ -168,7 +171,7 @@ class VAE_Trainer:
             with self.summary_writer.as_default():
                 for name,metric in self.train_metrics.items():
                     tf.summary.scalar(name, metric.result(), step=e)
-                    print("\t {} : {}".format(name, metric.result()))
+                    print("\t train {} : {}".format(name, metric.result()))
             for callback in self.callbacks:
                 callback(e)
             if e%TEST_INTERVAL==0:
@@ -187,7 +190,11 @@ class VAE_Trainer:
 
 
 class VAE_Unit_Trainer(VAE_Trainer):
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, unfrozen_optimizer=None, data_augmentation=False,fid_batch_size=4):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,
+                 log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],
+                 start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, 
+                 unfrozen_optimizer=None, data_augmentation=False,
+                 fid_batch_size=4, fid_interval=-1):
         super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size,data_augmentation=data_augmentation)
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
@@ -196,6 +203,7 @@ class VAE_Unit_Trainer(VAE_Trainer):
         self.fine_tuning = fine_tuning
         self.unfrozen_optimizer=unfrozen_optimizer
         self.fid_batch_size=fid_batch_size
+        self.fid_interval=fid_interval
         if self.fine_tuning:
             self.shared_partial.trainable=False
             for p in self.partials:
@@ -206,8 +214,7 @@ class VAE_Unit_Trainer(VAE_Trainer):
         else:
             self.setup_fid_metrics()
         
-        self.test_metrics={
-            **self.test_metrics,
+        self.fid_metrics={
             **self.test_gen_fid_dict,
             **self.test_transfer_fid_dict
         }
@@ -218,6 +225,11 @@ class VAE_Unit_Trainer(VAE_Trainer):
             mu,sig=calculate_mu_sig(input_shape,images)
             self.statistics[name]=(mu,sig)
 
+    def train_loop(self):
+        super().train_loop()
+        if self.fid_interval!=-1:
+            self.calculate_fid(self.epochs)
+    
             
 
     def setup_fid_metrics(self):
@@ -241,23 +253,45 @@ class VAE_Unit_Trainer(VAE_Trainer):
                 p.trainable=True
 
     def epoch_end(self,e):
-        self.calculate_fid()
+        if e%self.fid_interval==0 and self.fid_interval!=-1:
+            self.calculate_fid(e)
 
-    def calculate_fid(self):
+    def calculate_fid(self,e):
+        generated_images_list=self.generate_images(self.fid_batch_size)
+        input_shape=(128,128,3)
         for x in range(len(self.dataset_names)):
-            mu1,sig1=self.statistics[self.dataset_names[x]]
+            src_name=self.dataset_names[x]
+            mu1,sig1=self.statistics[src_name]
+            generated_images=generated_images_list[x]
+            mu2,sig2=calculate_mu_sig(input_shape,generated_images)
+            test_gen_fid=self.test_gen_fid_dict[TEST_GEN_FID.format(src_name)]
+            fid_score=calculate_fid(input_shape, mu1,sig1,mu2,sig2)
+            test_gen_fid(fid_score)
+            dataset=self.test_dataset_dict[src_name]
+            images=tf.concat([d for d in dataset],axis=0)[:self.fid_batch_size]
+            style_transferred_images_list=self.style_transfer(images,x)
             for y in range(len(self.dataset_names)):
                 if y==x:
-                    pass
+                    continue
+                target_name=self.dataset_names[y]
+                test_transfer_fid=self.test_transfer_fid_dict[TEST_TRANSFER_FID.format(src_name,target_name)]
+                style_transferred_images=style_transferred_images_list[y]
+                mu1,sig1=self.statistics[target_name]
+                mu2,sig2=calculate_mu_sig(input_shape, style_transferred_images)
+                fid_score=calculate_fid(input_shape, mu1,sig1,mu2,sig2)
+                test_transfer_fid(fid_score)
+        with self.summary_writer.as_default():
+            for name,metric in self.fid_metrics.items():
+                tf.summary.scalar(name, metric.result(), step=e)
+                print("\t fid {} : {}".format(name, metric.result()))
+        
                 
 
-    def style_transfer(self,img,n):
+    def style_transfer(self,images,n):
         encoder=self.vae_list[n].get_layer(ENCODER_STEM_NAME.format(n))
-        [latents,_,__]=encoder(img)
+        [latents,_,__]=encoder(images)
         ret=[]
         for i,decoder in enumerate(self.decoders):
-            if i==n:
-                continue
             ret.append(decoder(latents))
         return ret
 
