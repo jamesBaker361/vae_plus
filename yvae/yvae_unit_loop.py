@@ -45,6 +45,10 @@ def objective_unit(trial,args):
     n_classes=len(args.dataset_names)
 
     print(args)
+
+    print("tensorboard command:")
+    print("\ttensorboard dev upload --logdir logs/{}/ --one_shot".format(log_dir))
+
     OUTPUT_CHANNELS = 3
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)

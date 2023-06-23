@@ -54,6 +54,8 @@ def objective(trial, args):
     else:
         use_external=False
 
+    print("tensorboard command:")
+    print("\ttensorboard dev upload --logdir logs/{}/ --one_shot".format(log_dir))
 
     with mirrored_strategy.scope():
         optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)

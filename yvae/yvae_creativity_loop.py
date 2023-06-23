@@ -46,6 +46,9 @@ def objective(trial,args):
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
+    print("tensorboard command:")
+    print("\ttensorboard dev upload --logdir logs/{}/ --one_shot".format(log_dir))
+
     mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus, cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
     with mirrored_strategy.scope():
         GLOBAL_BATCH_SIZE = args.batch_size * mirrored_strategy.num_replicas_in_sync
