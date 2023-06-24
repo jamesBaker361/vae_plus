@@ -53,7 +53,7 @@ def objective_unit(trial,args):
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy()
+    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus)
     #mirrored_strategy = tf.distribute.MirroredStrategy()
     start=time.time()
     if args.disable_strategy==False:

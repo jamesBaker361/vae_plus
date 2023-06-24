@@ -49,7 +49,7 @@ def objective(trial,args):
     print("tensorboard command:")
     print("\ttensorboard dev upload --logdir logs/{}/ --one_shot".format(log_dir))
 
-    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus, cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus)
     start=time.time()
     with mirrored_strategy.scope():
         GLOBAL_BATCH_SIZE = args.batch_size * mirrored_strategy.num_replicas_in_sync
@@ -95,7 +95,7 @@ def objective(trial,args):
                                    n_classes=n_classes
                                    )
     callbacks=[
-        #YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3,enable_style_transfer=False)
+        YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3,enable_style_transfer=False)
     ]
     if args.save:
         callbacks.append(YvaeSavingCallback(trainer, save_model_folder, args.threshold, args.interval))
