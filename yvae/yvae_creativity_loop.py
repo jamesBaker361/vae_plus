@@ -50,12 +50,18 @@ def objective(trial,args):
     print("\ttensorboard dev upload --logdir logs/{}/ --one_shot".format(log_dir))
 
     mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus, cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    start=time.time()
     with mirrored_strategy.scope():
         GLOBAL_BATCH_SIZE = args.batch_size * mirrored_strategy.num_replicas_in_sync
+        optimizer_start=time.time()
         optimizer=keras.optimizers.Adam(learning_rate=0.0001)
+        print("optimizers took {} seconds".format(time.time()-optimizer_start))
+        pretrained_start=time.time()
         pretrained_classifier=keras.models.load_model(args.pretrained_classifier_path)
+        print('loading pretrained optimizer took {} seconds'.format(time.time()-pretrained_start))
 
         #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
+        model_start=time.time()
         if args.load:
             encoder=keras.models.load_model(save_model_folder+ENCODER_NAME)
             decoder=keras.models.load_model(save_model_folder+DECODER_NAME.format(0))
@@ -70,13 +76,16 @@ def objective(trial,args):
 
         else:
             y_vae_list=get_y_vae_list(args.latent_dim, input_shape, 1)
+        print('time elapsed for making model = {}'.format(time.time()-model_start))
 
+    print("mirrored stuff took {} seconds".format(time.time()-start))
     dataset_list=yvae_creativity_get_dataset_train(batch_size=args.batch_size,
                                                    dataset_names=args.dataset_names,
                                                    image_dim=args.image_dim,
                                                    mirrored_strategy=mirrored_strategy)
+    dataset_dict={}
     test_dataset_dict={}
-    trainer=VAE_Creativity_Trainer(y_vae_list, args.epochs,{}, test_dataset_dict, optimizer,
+    trainer=VAE_Creativity_Trainer(y_vae_list, args.epochs,dataset_dict, test_dataset_dict, optimizer,
                                    dataset_list,log_dir,mirrored_strategy, args.kl_loss_scale,
                                    callbacks=[],
                                    start_epoch=start_epoch,
