@@ -50,11 +50,18 @@ class YvaeImageGenerationCallback:
     def generate_images(self,path):
         images=self.yvae_trainer.generate_images(self.batch_size)
         n_vae=len(self.yvae_trainer.vae_list)
+        print('n_vae', n_vae)
         fig, axes = plt.subplots(nrows=n_vae, ncols=self.batch_size, figsize=(20, 20))
-        for i in range(n_vae):
+        if n_vae > 1:
+            for i in range(n_vae):
+                for j in range(self.batch_size):
+                    ax=axes[i][j]
+                    img=denormalize(images[i][j])
+                    ax.imshow(img)
+        else:
             for j in range(self.batch_size):
-                ax=axes[i][j]
-                img=denormalize(images[i][j])
+                ax=axes[j]
+                img=denormalize(images[j])
                 ax.imshow(img)
         plt.savefig(path)
         plt.close()
