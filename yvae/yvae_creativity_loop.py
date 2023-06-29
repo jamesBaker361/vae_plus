@@ -47,7 +47,7 @@ def objective(trial,args):
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
     print("tensorboard command:")
-    print("\ttensorboard dev upload --logdir logs/{}/ --one_shot".format(log_dir))
+    print("\ttensorboard dev upload --logdir {}/ --one_shot".format(log_dir))
 
     mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus)
     start=time.time()
