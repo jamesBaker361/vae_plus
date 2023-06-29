@@ -61,7 +61,7 @@ class YvaeImageGenerationCallback:
         else:
             for j in range(self.batch_size):
                 ax=axes[j]
-                img=denormalize(images[j])
+                img=denormalize(images[0][j])
                 ax.imshow(img)
         plt.savefig(path)
         plt.close()
