@@ -47,7 +47,7 @@ def objective_unit(trial,args):
     print(args)
 
     print("tensorboard command:")
-    print("\ttensorboard dev upload --logdir logs/{}/ --one_shot".format(log_dir))
+    print("\ttensorboard dev upload --logdir /{}/ --one_shot".format(log_dir))
 
     OUTPUT_CHANNELS = 3
     start_epoch=0
