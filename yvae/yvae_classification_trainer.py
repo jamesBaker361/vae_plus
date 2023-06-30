@@ -118,4 +118,6 @@ class YVAE_Classifier_Trainer:
                 print ('\nTime taken for test epoch {} is {} sec\n'.format(e,time.time()-start))
                 with self.summary_writer.as_default():
                     tf.summary.scalar(TEST_LOSS, self.test_loss.result(), step=e)
+        for callback in self.callbacks:
+            callback(e)
 

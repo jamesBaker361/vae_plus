@@ -178,6 +178,8 @@ class VAE_Trainer:
                 self.test_epoch(e)
             self.epoch_end(e)
         self.test_epoch(e)
+        for callback in self.callbacks:
+            callback(e)
     
     
     def generate_images(self,batch_size):
