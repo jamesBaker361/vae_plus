@@ -93,7 +93,11 @@ def objective_unit(trial,args):
                 print("not loading from saved")
                 encoder_start=time.time()
                 print('encoder args',input_shape,args.latent_dim, args.use_residual)
-                encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual, use_bn=args.use_bn,use_gn=args.use_gn)
+                if len(args.pretrained_creativity_path)==0:
+                    encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual, use_bn=args.use_bn,use_gn=args.use_gn)
+                else:
+                    encoder=tf.keras.models.load_model(args.pretrained_creativity_path)
+                    print('loaded from creativity!')
                 encoder_end=time.time()
                 print('getting encoder took {} time'.format(encoder_end-encoder_start))
                 mid_name=ENCODER_CONV_NAME.format(2)

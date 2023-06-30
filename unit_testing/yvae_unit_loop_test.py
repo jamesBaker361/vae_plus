@@ -1,16 +1,18 @@
 import sys
 sys.path.append('yvae')
 import os
+sys.path.append(os.getcwd())
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 os.environ["XLA_FLAGS"] ="--xla_gpu_cuda_data_dir=/home/jlb638/.conda/envs/fine-tune/lib"
 import tensorflow as tf
 tf.config.optimizer.set_jit(True)
 
 
-from yvae_trainer import *
-from yvae_callbacks import *
-from yvae_data_helper import *
-from yvae_unit_loop import *
+from yvae.yvae_trainer import *
+from yvae.yvae_callbacks import *
+from yvae.yvae_data_helper import *
+from yvae.yvae_unit_loop import *
+from yvae.yvae_model import *
 
 def objective_unit_test(image_dim):
     args.load=False
@@ -42,6 +44,15 @@ def obective_unit_test_load(image_dim):
     args.epochs=5
     objective_unit(None,args)
 
+def objective_unit_test_creative_load(image_dim):
+    input_shape=(image_dim, image_dim, 3)
+    creativity_encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual, use_bn=args.use_bn,use_gn=args.use_gn)
+    save_path='/scratch/jlb638/unit_testing/creativity_pretrained/'
+    os.makedirs(save_path, exist_ok=True)
+    creativity_encoder.save(save_path+ENCODER_NAME)
+    args.pretrained_creativity_path=save_path+ENCODER_NAME
+    objective_unit(None,args)
+
 
 
 if __name__=='__main__':
@@ -57,3 +68,5 @@ if __name__=='__main__':
         objective_unit_test(dim)
         objective_unit_test_save(dim)
         obective_unit_test_load(dim)
+    for dim in [64,128]:
+        objective_unit_test_creative_load(dim)

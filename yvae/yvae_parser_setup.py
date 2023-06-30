@@ -32,6 +32,7 @@ def add_arguments(parser):
     parser.add_argument("--use_residual",type=bool,default=False)
     parser.add_argument("--use_bn", type=bool, default=False, help='whether to use batch normalization in encoder/decoder')
     parser.add_argument("--use_gn",type=bool,default=False, help='whether to use group normalization')
+    parser.add_argument("--pretrained_creativity_path",type=str,default='',help='path to load pretrained creativity encoder')
 
     #creatiivity
     parser.add_argument("--use_strategy",help="whether to use mirrored_strategy in trainer",type=bool,default=False)
