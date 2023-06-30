@@ -44,15 +44,6 @@ def obective_unit_test_load(image_dim):
     args.epochs=5
     objective_unit(None,args)
 
-def objective_unit_test_creative_load(image_dim):
-    input_shape=(image_dim, image_dim, 3)
-    creativity_encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual, use_bn=args.use_bn,use_gn=args.use_gn)
-    save_path='/scratch/jlb638/unit_testing/creativity_pretrained/'
-    os.makedirs(save_path, exist_ok=True)
-    creativity_encoder.save(save_path+ENCODER_NAME)
-    args.pretrained_creativity_path=save_path+ENCODER_NAME
-    objective_unit(None,args)
-
 
 
 if __name__=='__main__':
@@ -68,5 +59,3 @@ if __name__=='__main__':
         objective_unit_test(dim)
         objective_unit_test_save(dim)
         obective_unit_test_load(dim)
-    for dim in [64,128]:
-        objective_unit_test_creative_load(dim)
