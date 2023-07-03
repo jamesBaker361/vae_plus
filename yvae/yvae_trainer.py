@@ -5,6 +5,7 @@ import time
 import sys
 sys.path.append('evaluation')
 from fid_src import *
+from vgg_src import *
 
 TRAIN='/train'
 TEST='/test'
@@ -16,10 +17,14 @@ TRAIN_RECONSTRUCTION_LOSS='train_reconstruction_loss'
 TEST_RECONSTRUCTION_LOSS='test_reconstruction_loss'
 TRAIN_CREATIVITY_LOSS='train_creativity_loss'
 TEST_CREATIVITY_LOSS='test_creativity_loss'
+
 TRAIN_GEN_FID='train_gen_fid_{}'
 TRAIN_TRANSFER_FID='train_transfer_fid_{}_to_{}'
 TEST_GEN_FID='test_gen_fid_{}'
 TEST_TRANSFER_FID='test_transfer_fid_{}_to_{}'
+
+TEST_GEN_VGG='test_gen_vgg_{}'
+TEST_TRANSFER_VGG='test_transfer_vgg_{}_to_{}'
 
 def get_compute_kl_loss(kl_loss_scale, global_batch_size):
     def _compute_kl_loss(z_mean, z_log_var):
@@ -196,7 +201,7 @@ class VAE_Unit_Trainer(VAE_Trainer):
                  log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],
                  start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, 
                  unfrozen_optimizer=None, data_augmentation=False,
-                 fid_batch_size=4, fid_interval=-1):
+                 fid_batch_size=4, fid_interval=-1,vgg_batch_size=4,vgg_interval=-1):
         super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size,data_augmentation=data_augmentation)
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
@@ -206,6 +211,8 @@ class VAE_Unit_Trainer(VAE_Trainer):
         self.unfrozen_optimizer=unfrozen_optimizer
         self.fid_batch_size=fid_batch_size
         self.fid_interval=fid_interval
+        self.vgg_batch_size=vgg_batch_size
+        self.vgg_interval=vgg_interval
         if self.fine_tuning:
             self.shared_partial.trainable=False
             for p in self.partials:
@@ -213,26 +220,52 @@ class VAE_Unit_Trainer(VAE_Trainer):
         if mirrored_strategy is not None:
             with mirrored_strategy.scope():
                 self.setup_fid_metrics()
+                self.setup_vgg_metrics()
         else:
             self.setup_fid_metrics()
+            self.setup_vgg_metrics()
         
         self.fid_metrics={
             **self.test_gen_fid_dict,
             **self.test_transfer_fid_dict
         }
+
+        self.vgg_metrics={
+            **self.test_gen_vgg_dict,
+            **self.test_transfer_vgg_dict
+        }
+
         self.statistics={}
+        self.vgg_content_features={}
         for name,dataset in test_dataset_dict.items():
             images=tf.concat([d for d in dataset],axis=0)[:self.fid_batch_size]
             input_shape=(128,128,3)
             mu,sig=calculate_mu_sig(input_shape,images)
             self.statistics[name]=(mu,sig)
 
+            images=tf.concat([d for d in dataset],axis=0)[:self.vgg_batch_size]
+            self.vgg_content_features[name]=calculate_content_features(images)
+
+
     def train_loop(self):
         super().train_loop()
         if self.fid_interval!=-1:
             self.calculate_fid(self.epochs)
+        if self.vgg_interval!=-1:
+            self.calculate_vgg(self.epochs)
     
-            
+    def setup_vgg_metrics(self):
+        self.test_gen_vgg_dict={
+            TEST_GEN_VGG.format(name) : tf.keras.metrics.Mean(TEST_GEN_FID.format(name), dtype=tf.float32) for name in self.dataset_names
+        }
+        self.test_transfer_vgg_dict={}
+        for x in range(len(self.dataset_names)):
+            for y in range(len(self.dataset_names)):
+                if y==x:
+                    continue
+                src=self.dataset_names[x] #initial domain
+                target=self.dataset_names[y] #target domain (style)
+                self.test_transfer_vgg_dict[TEST_TRANSFER_VGG.format(src, target)] = tf.keras.metrics.Mean(TEST_TRANSFER_VGG.format(src,target), dtype=tf.float32)
 
     def setup_fid_metrics(self):
         self.test_gen_fid_dict={
@@ -257,6 +290,8 @@ class VAE_Unit_Trainer(VAE_Trainer):
     def epoch_end(self,e):
         if e%self.fid_interval==0 and self.fid_interval!=-1:
             self.calculate_fid(e)
+        if e%self.vgg_interval==0 and self.vgg_interval!=-1:
+            self.calculate_vgg(e)
 
     def calculate_fid(self,e):
         generated_images_list=self.generate_images(self.fid_batch_size)
@@ -286,6 +321,38 @@ class VAE_Unit_Trainer(VAE_Trainer):
             for name,metric in self.fid_metrics.items():
                 tf.summary.scalar(name, metric.result(), step=e)
                 print("\t fid {} : {}".format(name, metric.result()))
+
+    def calculate_vgg(self,e):
+        generated_images_list=self.generate_images(self.vgg_batch_size)
+        for x in range(len(self.dataset_names)):
+            src_name=self.dataset_names[x]
+            features1=self.vgg_content_features[src_name]
+            generated_images=generated_images_list[x]
+            features2=calculate_content_features(generated_images)
+            content_loss=calculate_content_loss(features1, features2)
+            test_gen_vgg=self.test_gen_vgg_dict[TEST_GEN_VGG.format(src_name)]
+            test_gen_vgg(content_loss)
+
+            dataset=self.test_dataset_dict[src_name]
+            images=tf.concat([d for d in dataset],axis=0)[:self.fid_batch_size]
+            style_transferred_images_list=self.style_transfer(images,x)
+            for y in range(len(self.dataset_names)):
+                if y==x:
+                    continue
+                target_name=self.dataset_names[y]
+                test_transfer_vgg=self.test_transfer_vgg_dict[TEST_TRANSFER_VGG.format(src_name, target_name)]
+                style_transferred_images=style_transferred_images_list[y]
+                features1=self.vgg_content_features[target_name]
+                features2=calculate_content_features(style_transferred_images)
+                content_loss=calculate_content_loss(features1, features2)
+                test_transfer_vgg(content_loss)
+
+        with self.summary_writer.as_default():
+            for name,metric in self.vgg_metrics.items():
+                tf.summary.scalar(name, metric.result(), step=e)
+                print("\t vgg {} : {}".format(name, metric.result()))
+
+
         
                 
 
