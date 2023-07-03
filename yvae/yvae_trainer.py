@@ -260,7 +260,7 @@ class VAE_Unit_Trainer(VAE_Trainer):
 
     def calculate_fid(self,e):
         generated_images_list=self.generate_images(self.fid_batch_size)
-        input_shape=(128,128,3)
+        input_shape=(128,128,3) #the inceptionNet cant have images with dim that are too small, so they have to be expanded
         for x in range(len(self.dataset_names)):
             src_name=self.dataset_names[x]
             mu1,sig1=self.statistics[src_name]
