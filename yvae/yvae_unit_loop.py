@@ -100,7 +100,12 @@ def objective_unit(trial,args):
             encoder_end=time.time()
             print('getting encoder took {} time'.format(encoder_end-encoder_start))
             mid_name=ENCODER_CONV_NAME.format(2)
-            unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name, use_residual=args.use_residual,use_bn=args.use_bn)
+            if len(args.pretrained_creativity_path)==0:
+                unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name, 
+                                        use_residual=args.use_residual,use_bn=args.use_bn,use_gn=args.use_gn)
+            else:
+                unit_list=get_unit_list_from_creative(encoder, n_classes=n_classes,input_shape=input_shape, mid_name=mid_name,
+                latent_dim=args.latent_dim, use_residual=args.use_residual,use_bn=args.use_bn,use_gn=args.use_gn)
             print("unit_list time took {}".format(time.time()-encoder_end))
 
         mirron_end=time.time()

@@ -204,14 +204,14 @@ def build_unit_list_testing(input_shape,latent_dim,n_classes,mid_name):
     unit_list=get_unit_list(input_shape,latent_dim,n_classes,encoder, mid_name)
     return unit_list
 
-def get_unit_list_from_creative(pretrained_encoder,n_classes,input_shape,mid_name,latent_dim): #uses pretrained encoder to make unit_list
+def get_unit_list_from_creative(pretrained_encoder,n_classes,input_shape,mid_name,latent_dim,
+                                use_residual=False,use_bn=False, use_gn=False): #uses pretrained encoder to make unit_list
     shared_partial=get_shared_partial(pretrained_encoder, mid_name, latent_dim)
     pretrained_unshared_partial=extract_unshared_partial_encoder(pretrained_encoder, 
                                                                  start_name=ENCODER_INPUT_NAME,
                                                                  mid_name=mid_name,
                                                                   n=0)
     src_weights=pretrained_unshared_partial.get_weights()
-
     unshared_partial_list=[]
     for n in range(n_classes):
         unshared_partial=get_unshared_partial_encoder(input_shape, latent_dim, ENCODER_INPUT_NAME,mid_name,n)
@@ -226,7 +226,7 @@ def get_unit_list_from_creative(pretrained_encoder,n_classes,input_shape,mid_nam
         encoder = Model(inputs, [z_mean, z_log, z],name=ENCODER_STEM_NAME.format(n))
         encoder_list.append(encoder)
 
-    decoder_list=[get_decoder(latent_dim, input_shape[1],n) for n in range(n_classes)]
+    decoder_list=[get_decoder(latent_dim, input_shape[1],n,use_residual=use_residual, use_bn=use_bn, use_gn=use_gn) for n in range(n_classes)]
     return compile_unit_list(encoder_list,decoder_list)
 
 
