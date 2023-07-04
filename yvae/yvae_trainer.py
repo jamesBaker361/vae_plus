@@ -396,12 +396,13 @@ class VAE_Creativity_Trainer(YVAE_Trainer):
         self.pretrained_classifier=pretrained_classifier
         self.n_classes=n_classes
         if mirrored_strategy is not None:
-            self.train_creativity_loss=tf.keras.metrics.Mean(TRAIN_CREATIVITY_LOSS, dtype=tf.float32)
-            self.test_creativity_loss=tf.keras.metrics.Mean(TEST_CREATIVITY_LOSS, dtype=tf.float32)
-            self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
-            self.compute_creativity_loss=get_compute_creativity_loss(self.reconstruction_loss_function, creativity_lambda, global_batch_size,n_classes)
-            self.train_metrics[TRAIN_CREATIVITY_LOSS]=self.train_creativity_loss
-            self.test_metrics[TEST_CREATIVITY_LOSS]=self.test_creativity_loss
+            with mirrored_strategy.scope():
+                self.train_creativity_loss=tf.keras.metrics.Mean(TRAIN_CREATIVITY_LOSS, dtype=tf.float32)
+                self.test_creativity_loss=tf.keras.metrics.Mean(TEST_CREATIVITY_LOSS, dtype=tf.float32)
+                self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
+                self.compute_creativity_loss=get_compute_creativity_loss(self.reconstruction_loss_function, creativity_lambda, global_batch_size,n_classes)
+                self.train_metrics[TRAIN_CREATIVITY_LOSS]=self.train_creativity_loss
+                self.test_metrics[TEST_CREATIVITY_LOSS]=self.test_creativity_loss
         else:
             self.train_creativity_loss=tf.keras.metrics.Mean(TRAIN_CREATIVITY_LOSS, dtype=tf.float32)
             self.test_creativity_loss=tf.keras.metrics.Mean(TEST_CREATIVITY_LOSS, dtype=tf.float32)
