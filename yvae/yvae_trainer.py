@@ -426,16 +426,13 @@ class VAE_Creativity_Trainer(YVAE_Trainer):
         return total_loss
     
     def test_step(self,batch,vae):
-        with tf.GradientTape() as tape:
-            [reconstruction,z_mean, z_log_var]=vae(batch)
-            reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
-            kl_loss=self.compute_kl_loss(z_mean,z_log_var)
-            predicted_labels=self.pretrained_classifier(batch)
-            creativity_loss=self.compute_creativity_loss(predicted_labels)
-            total_loss= reconstruction_loss+kl_loss+creativity_loss
-        grads = tape.gradient(total_loss, vae.trainable_weights)
-        self.optimizer.apply_gradients(zip(grads, vae.trainable_weights))
-        self.train_loss(total_loss)
-        self.train_reconstruction_loss(reconstruction_loss)
-        self.train_creativity_loss(creativity_loss)
+        [reconstruction,z_mean, z_log_var]=vae(batch)
+        reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
+        kl_loss=self.compute_kl_loss(z_mean,z_log_var)
+        predicted_labels=self.pretrained_classifier(batch)
+        creativity_loss=self.compute_creativity_loss(predicted_labels)
+        total_loss= reconstruction_loss+kl_loss+creativity_loss
+        self.test_loss(total_loss)
+        self.test_reconstruction_loss(reconstruction_loss)
+        self.test_creativity_loss(creativity_loss)
         return total_loss
