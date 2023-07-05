@@ -84,7 +84,7 @@ def objective(trial,args):
                                                    image_dim=args.image_dim,
                                                    mirrored_strategy=mirrored_strategy)
     dataset_dict={}
-    test_dataset_dict={}
+    test_dataset_dict={} #emoty because we don't really care about test scores for just pretraining creativity
     trainer=VAE_Creativity_Trainer(y_vae_list, args.epochs,dataset_dict, test_dataset_dict, optimizer,
                                    dataset_list,log_dir,mirrored_strategy, args.kl_loss_scale,
                                    callbacks=[],
