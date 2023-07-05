@@ -327,15 +327,15 @@ def get_classifier_model(latent_dim,input_shape,n_classes,class_latent_dim=0):
 
 
 
-def get_y_vae_list(latent_dim, input_shape, n_classes):
+def get_y_vae_list(latent_dim, input_shape, n_classes,use_residual=False, use_bn=False,use_gn=False):
     #we use this for creativty and non-unit
-    encoder = get_encoder(input_shape, latent_dim)
+    encoder = get_encoder(input_shape, latent_dim,use_residual=use_residual, use_bn=use_bn,use_gn=use_gn)
     inputs=encoder.inputs
     encoder.build(input_shape)
     #encoder=Encoder(latent_dim,name="encoder")
     image_dim=input_shape[1]
     #outputs1 = decoder1(encoder(inputs)[2])
-    decoder_list=[get_decoder(latent_dim, image_dim,n) for n in range(n_classes)]
+    decoder_list=[get_decoder(latent_dim, image_dim,n,use_residual=use_residual, use_bn=use_bn,use_gn=use_gn) for n in range(n_classes)]
     for dec in decoder_list:
         dec.build((latent_dim))
     [z_mean, z_log_var, latents]=encoder(inputs)

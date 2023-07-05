@@ -75,7 +75,7 @@ def objective(trial,args):
             print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch),flush=True)
 
         else:
-            y_vae_list=get_y_vae_list(args.latent_dim, input_shape, 1)
+            y_vae_list=get_y_vae_list(args.latent_dim, input_shape, 1,use_residual=args.use_residual,use_bn=args.use_bn,use_gn=args.use_gn)
         print('time elapsed for making model = {}'.format(time.time()-model_start))
 
     print("mirrored stuff took {} seconds".format(time.time()-start))
