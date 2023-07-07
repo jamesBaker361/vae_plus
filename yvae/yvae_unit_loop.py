@@ -53,60 +53,60 @@ def objective_unit(trial,args):
     start_epoch=0
     input_shape=(args.image_dim,args.image_dim, OUTPUT_CHANNELS)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy(logical_gpus)
+    mirrored_strategy = None #tf.distribute.MirroredStrategy(logical_gpus)
     #mirrored_strategy = tf.distribute.MirroredStrategy()
     start=time.time()
-    with mirrored_strategy.scope():
-        print(mirrored_strategy)
-        print("begin mirrored stuff")
+    #with mirrored_strategy.scope():
+    print(mirrored_strategy)
+    print("begin mirrored stuff")
 
-        data_start=time.time()
-        dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
-        test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
-        data_end=time.time()
-        print("seeting up data took {} seconds ".format(data_end-data_start))
-        
-        optimizer_start=time.time()
-        optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)
-        unfrozen_optimizer=keras.optimizers.Adam(learning_rate=0.00001)
-        print("optimizers took {} seconds".format(time.time()-optimizer_start))
-        #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
-        process = psutil.Process(os.getpid())
-        pct=process.memory_percent()
-        print('mem pct',pct)
-        time.sleep(5)
-        gc.collect()
-        if args.load:
-            print("loading from saved model")
-            shared_partial=tf.keras.models.load_model(save_model_folder+SHARED_ENCODER_NAME)
-            decoders=[tf.keras.models.load_model(save_model_folder+DECODER_NAME.format(i)) for i in range(n_classes)]
-            partials=[tf.keras.models.load_model(save_model_folder+UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(n_classes)]
-            unit_list=load_unit_list(shared_partial, decoders, partials)
+    data_start=time.time()
+    dataset_dict=yvae_get_dataset_train(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim,mirrored_strategy=mirrored_strategy)
+    test_dataset_dict=yvae_get_dataset_test(batch_size=args.batch_size, dataset_names=args.dataset_names, image_dim=args.image_dim, mirrored_strategy=mirrored_strategy)
+    data_end=time.time()
+    print("seeting up data took {} seconds ".format(data_end-data_start))
+    
+    optimizer_start=time.time()
+    optimizer=keras.optimizers.Adam(learning_rate=args.init_lr)
+    unfrozen_optimizer=keras.optimizers.Adam(learning_rate=0.00001)
+    print("optimizers took {} seconds".format(time.time()-optimizer_start))
+    #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
+    process = psutil.Process(os.getpid())
+    pct=process.memory_percent()
+    print('mem pct',pct)
+    time.sleep(5)
+    gc.collect()
+    if args.load:
+        print("loading from saved model")
+        shared_partial=tf.keras.models.load_model(save_model_folder+SHARED_ENCODER_NAME)
+        decoders=[tf.keras.models.load_model(save_model_folder+DECODER_NAME.format(i)) for i in range(n_classes)]
+        partials=[tf.keras.models.load_model(save_model_folder+UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(n_classes)]
+        unit_list=load_unit_list(shared_partial, decoders, partials)
 
-            with open(save_model_folder+"/meta_data.json","r") as src_file:
-                start_epoch=json.load(src_file)["epoch"]
+        with open(save_model_folder+"/meta_data.json","r") as src_file:
+            start_epoch=json.load(src_file)["epoch"]
 
-            print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch))
+        print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch))
 
+    else:
+        print("not loading from saved")
+        encoder_start=time.time()
+        print('encoder args',input_shape,args.latent_dim, args.use_residual)
+        if len(args.pretrained_creativity_path)==0:
+            encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual, use_bn=args.use_bn,use_gn=args.use_gn)
         else:
-            print("not loading from saved")
-            encoder_start=time.time()
-            print('encoder args',input_shape,args.latent_dim, args.use_residual)
-            if len(args.pretrained_creativity_path)==0:
-                encoder=get_encoder(input_shape,args.latent_dim, use_residual=args.use_residual, use_bn=args.use_bn,use_gn=args.use_gn)
-            else:
-                encoder=tf.keras.models.load_model(args.pretrained_creativity_path)
-                print('loaded from creativity!')
-            encoder_end=time.time()
-            print('getting encoder took {} time'.format(encoder_end-encoder_start))
-            mid_name=ENCODER_CONV_NAME.format(2)
-            if len(args.pretrained_creativity_path)==0:
-                unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name, 
-                                        use_residual=args.use_residual,use_bn=args.use_bn,use_gn=args.use_gn)
-            else:
-                unit_list=get_unit_list_from_creative(encoder, n_classes=n_classes,input_shape=input_shape, mid_name=mid_name,
-                latent_dim=args.latent_dim, use_residual=args.use_residual,use_bn=args.use_bn,use_gn=args.use_gn)
-            print("unit_list time took {}".format(time.time()-encoder_end))
+            encoder=tf.keras.models.load_model(args.pretrained_creativity_path)
+            print('loaded from creativity!')
+        encoder_end=time.time()
+        print('getting encoder took {} time'.format(encoder_end-encoder_start))
+        mid_name=ENCODER_CONV_NAME.format(2)
+        if len(args.pretrained_creativity_path)==0:
+            unit_list=get_unit_list(input_shape,args.latent_dim,n_classes,encoder,mid_name=mid_name, 
+                                    use_residual=args.use_residual,use_bn=args.use_bn,use_gn=args.use_gn)
+        else:
+            unit_list=get_unit_list_from_creative(encoder, n_classes=n_classes,input_shape=input_shape, mid_name=mid_name,
+            latent_dim=args.latent_dim, use_residual=args.use_residual,use_bn=args.use_bn,use_gn=args.use_gn)
+        print("unit_list time took {}".format(time.time()-encoder_end))
 
         mirron_end=time.time()
         print("mirrored stuff took {} seconds".format(mirron_end-start))
