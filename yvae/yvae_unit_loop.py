@@ -112,7 +112,11 @@ def objective_unit(trial,args):
         print("mirrored stuff took {} seconds".format(mirron_end-start))
     trainer=VAE_Unit_Trainer(unit_list, args.epochs, dataset_dict=dataset_dict, test_dataset_dict=test_dataset_dict, 
                              optimizer=optimizer, log_dir=log_dir, mirrored_strategy=mirrored_strategy, kl_loss_scale=args.kl_loss_scale,start_epoch=start_epoch,
-                             unfreezing_epoch=args.unfreezing_epoch, fine_tuning=args.fine_tuning, unfrozen_optimizer=unfrozen_optimizer )
+                             unfreezing_epoch=args.unfreezing_epoch, fine_tuning=args.fine_tuning, unfrozen_optimizer=unfrozen_optimizer,
+                              fid_interval=args.fid_interval,
+                              vgg_interval=args.vgg_interval,
+                              fid_batch_size=128,
+                              vgg_batch_size=128 )
     callbacks=[
         YvaeImageGenerationCallback(trainer, test_dataset_dict, save_folder, 3)
     ]
