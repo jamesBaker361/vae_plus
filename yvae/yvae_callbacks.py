@@ -30,11 +30,12 @@ class YvaeImageGenerationCallback:
         self.generate_images('{}/gen_{}.png'.format(self.image_output_dir, epoch))
 
     def style_transfer(self,data,path):
+        print('style transfer????')
         n_vae=len(self.yvae_trainer.vae_list)
         n_datasets=len(data)
         data_values=[v for v in data.values()]
         #print('tf.shape(data_values)',tf.shape(data_values))
-        fig, axes = plt.subplots(nrows=n_vae, ncols=n_datasets, figsize=(20, 20))
+        fig, axes = plt.subplots(nrows=n_vae+1, ncols=n_datasets, figsize=(20, 20))
         for i in range(n_vae):
             yvae=self.yvae_trainer.vae_list[i]
             for j in range(n_datasets):
@@ -44,6 +45,10 @@ class YvaeImageGenerationCallback:
                 #print('tf.shape(reconstructed_image)',tf.shape(reconstructed_image))
                 ax = axes[i][j]
                 ax.imshow(reconstructed_image)
+        for j in range(n_datasets):
+            ax = axes[i+1][j]
+            image=data_values[j][0]
+            ax.imshow(image)
         plt.savefig(path)
         plt.close()
         plt.clf()

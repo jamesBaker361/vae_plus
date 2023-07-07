@@ -2,6 +2,7 @@ import sys
 sys.path.append('yvae')
 
 
+from yvae_model import *
 from yvae_trainer import *
 from yvae_callbacks import *
 from yvae_data_helper import *
@@ -20,8 +21,23 @@ def YvaeImageGenerationCallback_test(
     test_dataset_dict=yvae_get_dataset_test(batch_size=4, image_dim=input_shape[1])
     optimizer=keras.optimizers.Adam(learning_rate=0.0001)
     trainer=YVAE_Trainer(y_vae_list, epochs,dataset_dict, test_dataset_dict,optimizer,log_dir=LOG_DIR)
-    callback=YvaeImageGenerationCallback(trainer, dataset_dict, 'exploration/', 3)
+    callback=YvaeImageGenerationCallback(trainer, dataset_dict, 'exploration/unit_testing/', 3)
     callback(0)
+
+def YvaeImageGenerationCallbackUNIT_test(
+    input_shape=(32,32,3),
+    latent_dim=10,
+     mid_name='encoder_conv_2',
+    n=2,
+    epochs=2):
+    pretrained_encoder=get_encoder(input_shape, latent_dim)
+    unit_list=get_unit_list(input_shape,latent_dim,n,pretrained_encoder, mid_name)
+    dataset_dict=yvae_get_dataset_train(batch_size=4, image_dim=input_shape[1])
+    test_dataset_dict=yvae_get_dataset_test(batch_size=4, image_dim=input_shape[1])
+    optimizer=keras.optimizers.Adam(learning_rate=0.0001)
+    trainer=VAE_Unit_Trainer(unit_list, epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=LOG_DIR,mirrored_strategy=None,callbacks=[])
+    callback=YvaeImageGenerationCallback(trainer, dataset_dict, 'exploration/unit_testing/', 3)
+    callback(1)
 
 def YvaeSavingCallback_test(
         input_shape=(64,64,3),
