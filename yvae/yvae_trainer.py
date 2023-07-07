@@ -9,7 +9,7 @@ from vgg_src import *
 
 TRAIN='/train'
 TEST='/test'
-TEST_INTERVAL=1
+TEST_INTERVAL=10
 FID_BATCH_SIZE=4
 TRAIN_LOSS='train_loss'
 TEST_LOSS='test_loss'
