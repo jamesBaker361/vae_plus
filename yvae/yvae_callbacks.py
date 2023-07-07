@@ -4,6 +4,7 @@ import sys
 sys.path.append("data_utils")
 import tensorflow as tf
 import json
+import random
 from processing_utils import *
 from yvae_model import *
 
@@ -23,7 +24,7 @@ class YvaeImageGenerationCallback:
         if self.enable_style_transfer:
             self.style_transfer(self.sample, '{}/test_{}.png'.format(self.image_output_dir, epoch))
             random_sample={
-                key: next(iter(value)) for key,value in self.test_dataset_dict.items()
+                k: sorted([v for v in value], key=lambda x: random.random())[0] for k,value in self.test_dataset_dict.items()
             }
             self.style_transfer(random_sample,'{}/random_test_{}.png'.format(self.image_output_dir, epoch))
         self.generate_images('{}/gen_{}.png'.format(self.image_output_dir, epoch))
