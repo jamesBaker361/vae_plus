@@ -26,6 +26,11 @@ TEST_TRANSFER_FID='test_transfer_fid_{}_to_{}'
 TEST_GEN_VGG='test_gen_vgg_{}'
 TEST_TRANSFER_VGG='test_transfer_vgg_{}_to_{}'
 
+def default_kl_loss_scale(initial_kl_loss_scale):
+    def _default_kl_loss_scale(*args,**kwargs):
+        return initial_kl_loss_scale
+    return _default_kl_loss_scale
+
 def get_compute_kl_loss(kl_loss_scale, global_batch_size):
     def _compute_kl_loss(z_mean, z_log_var):
         kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
@@ -47,7 +52,7 @@ def get_compute_creativity_loss(reconstruction_loss_function, creativity_lambda,
     return _compute_creativity_loss
 
 class VAE_Trainer:
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale,data_augmentation,callbacks=[],start_epoch=0):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale,data_augmentation,kl_function_name='',callbacks=[],start_epoch=0):
         self.vae_list=vae_list
         self.decoders=[vae_list[i].get_layer(DECODER_NAME.format(i)) for i in range(len(vae_list))]
         self.epochs=epochs
@@ -62,6 +67,10 @@ class VAE_Trainer:
         self.kl_loss_scale=kl_loss_scale
         self.log_dir=log_dir
         self.data_augmentation=data_augmentation
+        self.global_batch_size=global_batch_size
+
+        if kl_function_name=='' or kl_function_name=='default':
+            self.kl_function=default_kl_loss_scale(kl_loss_scale)
         
         self.mirrored_strategy=mirrored_strategy
         if mirrored_strategy is not None:
@@ -136,7 +145,12 @@ class VAE_Trainer:
         return total_loss
 
     def epoch_setup(self,e):
-        pass
+        self.kl_loss_scale=self.kl_function(epoch=e)
+        if self.mirrored_strategy is not None:
+            with self.mirrored_strategy.scope():
+                self.compute_kl_loss=get_compute_kl_loss(self.kl_loss_scale, self.global_batch_size)
+        else:
+            self.compute_kl_loss=get_compute_kl_loss(self.kl_loss_scale, self.global_batch_size)
 
     def epoch_end(self,e):
         pass
