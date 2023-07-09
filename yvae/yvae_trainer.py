@@ -13,6 +13,7 @@ TEST_INTERVAL=10
 FID_BATCH_SIZE=4
 TRAIN_LOSS='train_loss'
 TEST_LOSS='test_loss'
+TRAIN_KL='train_kl'
 TRAIN_RECONSTRUCTION_LOSS='train_reconstruction_loss'
 TEST_RECONSTRUCTION_LOSS='test_reconstruction_loss'
 TRAIN_CREATIVITY_LOSS='train_creativity_loss'
@@ -92,6 +93,7 @@ class VAE_Trainer:
                 self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
                 self.train_loss = tf.keras.metrics.Mean(TRAIN_LOSS, dtype=tf.float32)
                 self.train_reconstruction_loss= tf.keras.metrics.Mean(TRAIN_RECONSTRUCTION_LOSS, dtype=tf.float32)
+                self.train_kl_loss=tf.keras.metrics.Mean(TRAIN_KL, dtype=tf.float32)
                 self.test_loss = tf.keras.metrics.Mean(TEST_LOSS, dtype=tf.float32)
                 self.test_reconstruction_loss= tf.keras.metrics.Mean(TEST_RECONSTRUCTION_LOSS, dtype=tf.float32)
                 self.summary_writer = tf.summary.create_file_writer(log_dir)
@@ -105,6 +107,7 @@ class VAE_Trainer:
             self.reconstruction_loss_function=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)
             self.train_loss = tf.keras.metrics.Mean(TRAIN_LOSS, dtype=tf.float32)
             self.train_reconstruction_loss= tf.keras.metrics.Mean(TRAIN_RECONSTRUCTION_LOSS, dtype=tf.float32)
+            self.train_kl_loss=tf.keras.metrics.Mean(TRAIN_KL, dtype=tf.float32)
             self.test_loss = tf.keras.metrics.Mean(TEST_LOSS, dtype=tf.float32)
             self.test_reconstruction_loss= tf.keras.metrics.Mean(TEST_RECONSTRUCTION_LOSS, dtype=tf.float32)
             self.summary_writer = tf.summary.create_file_writer(log_dir)
@@ -116,7 +119,8 @@ class VAE_Trainer:
             
         self.train_metrics={
             TRAIN_LOSS:self.train_loss,
-            TRAIN_RECONSTRUCTION_LOSS:self.train_reconstruction_loss
+            TRAIN_RECONSTRUCTION_LOSS:self.train_reconstruction_loss,
+            TRAIN_KL: self.train_kl_loss
         }
         self.test_metrics={
             TEST_LOSS:self.test_loss,
@@ -130,10 +134,12 @@ class VAE_Trainer:
         with tf.GradientTape() as tape:
             [reconstruction,z_mean, z_log_var]=vae(batch)
             reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
-            _total_loss=self.compute_kl_loss(z_mean,z_log_var) +reconstruction_loss
+            _kl_loss=self.compute_kl_loss(z_mean,z_log_var)
+            _total_loss=_kl_loss +reconstruction_loss
         grads = tape.gradient(_total_loss, vae.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, vae.trainable_weights))
         self.train_loss(_total_loss)
+        self.train_kl_loss(_kl_loss)
         self.train_reconstruction_loss(reconstruction_loss)
         return _total_loss
     
@@ -153,7 +159,7 @@ class VAE_Trainer:
     def test_step(self,batch,vae):
         [reconstruction,z_mean, z_log_var]=vae(batch)
         reconstruction_loss =self.reconstruction_loss_function(batch, reconstruction)
-        total_loss=self.compute_kl_loss(z_mean,z_log_var)
+        total_loss=self.compute_kl_loss(z_mean,z_log_var)+reconstruction_loss
         self.test_loss(total_loss)
         self.test_reconstruction_loss(reconstruction_loss)
         return total_loss
