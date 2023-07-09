@@ -31,6 +31,14 @@ def default_kl_loss_scale(initial_kl_loss_scale):
         return initial_kl_loss_scale
     return _default_kl_loss_scale
 
+def multiplicative_increasing_kl_loss_scale(initial_kl_loss_scale, multiplicative_factor):
+    def _multiplicative_increasing_kl_loss_scale(epoch,*args,**kwargs):
+        scale=initial_kl_loss_scale
+        for _ in range(epoch):
+            scale*=multiplicative_factor
+        return scale
+    return _multiplicative_increasing_kl_loss_scale
+
 def get_compute_kl_loss(kl_loss_scale, global_batch_size):
     def _compute_kl_loss(z_mean, z_log_var):
         kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
@@ -52,7 +60,11 @@ def get_compute_creativity_loss(reconstruction_loss_function, creativity_lambda,
     return _compute_creativity_loss
 
 class VAE_Trainer:
-    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,global_batch_size,log_dir,mirrored_strategy,kl_loss_scale,data_augmentation,kl_function_name='',callbacks=[],start_epoch=0):
+    def __init__(self,vae_list,epochs,dataset_dict,test_dataset_dict,
+                 optimizer,global_batch_size,log_dir,
+                 mirrored_strategy,kl_loss_scale,data_augmentation,
+                 kl_function_name='',multiplicative_factor=1.001,
+                 callbacks=[],start_epoch=0):
         self.vae_list=vae_list
         self.decoders=[vae_list[i].get_layer(DECODER_NAME.format(i)) for i in range(len(vae_list))]
         self.epochs=epochs
@@ -71,6 +83,8 @@ class VAE_Trainer:
 
         if kl_function_name=='' or kl_function_name=='default':
             self.kl_function=default_kl_loss_scale(kl_loss_scale)
+        elif kl_function_name=='multiplicative' or 'multiplicative_increasing':
+            self.kl_function=multiplicative_increasing_kl_loss_scale(kl_loss_scale, multiplicative_factor=multiplicative_factor)
         
         self.mirrored_strategy=mirrored_strategy
         if mirrored_strategy is not None:
@@ -215,8 +229,13 @@ class VAE_Unit_Trainer(VAE_Trainer):
                  log_dir='',mirrored_strategy=None,kl_loss_scale=1.0,callbacks=[],
                  start_epoch=0,global_batch_size=4, fine_tuning=False,unfreezing_epoch=0, 
                  unfrozen_optimizer=None, data_augmentation=False,
-                 fid_batch_size=4, fid_interval=-1,vgg_batch_size=4,vgg_interval=-1):
-        super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,callbacks=callbacks,start_epoch=start_epoch,global_batch_size=global_batch_size,data_augmentation=data_augmentation)
+                 fid_batch_size=4, fid_interval=-1,vgg_batch_size=4,vgg_interval=-1,
+                 kl_function_name='',multiplicative_factor=1.001):
+        super().__init__(vae_list,epochs,dataset_dict,test_dataset_dict,optimizer,log_dir=log_dir,
+                         mirrored_strategy=mirrored_strategy ,kl_loss_scale=kl_loss_scale,
+                         callbacks=callbacks,start_epoch=start_epoch,
+                         global_batch_size=global_batch_size,data_augmentation=data_augmentation,
+                         kl_function_name=kl_function_name,multiplicative_factor=multiplicative_factor)
         vae_list[0].summary()
         self.shared_partial=vae_list[0].get_layer(ENCODER_STEM_NAME.format(0)).get_layer(SHARED_ENCODER_NAME)
         self.partials=[vae_list[i].get_layer(ENCODER_STEM_NAME.format(i)).get_layer(UNSHARED_PARTIAL_ENCODER_NAME.format(i)) for i in range(len(vae_list))]
@@ -295,6 +314,7 @@ class VAE_Unit_Trainer(VAE_Trainer):
                 self.test_transfer_fid_dict[TEST_TRANSFER_FID.format(src,target)]= tf.keras.metrics.Mean(TEST_TRANSFER_FID.format(src,target), dtype=tf.float32)
 
     def epoch_setup(self,e):
+        super().epoch_setup(e)
         if self.fine_tuning and self.unfreezing_epoch<=e:
             self.optimizer=self.unfrozen_optimizer
             self.shared_partial.trainable=True
