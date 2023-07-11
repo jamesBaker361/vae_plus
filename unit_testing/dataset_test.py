@@ -12,6 +12,7 @@ def load_all_datasets():
         flickr_128="jlbaker361/flickr_humans_dim_128_{}k".format(num)
         anime_128="jlbaker361/anime_faces_dim_128_{}k".format(num)
         female_128='jlbaker361/kaggle_females_dim_128_{}k'.format(num)
+        female_128='jlbaker361/kaggle_males_dim_128_{}k'.format(num)
         for name in [flickr,flickr_128,anime, anime_128,female_128]:
             load_dataset(name, split="train",cache_dir="../../../../../scratch/jlb638/hf_cache")
 
