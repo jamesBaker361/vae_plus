@@ -62,7 +62,9 @@ def objective(trial,args):
 
         #optimizer=tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
         model_start=time.time()
-        if args.load:
+        try:
+            if args.load==False:
+                raise Exception("not supposed to load!!")
             encoder=keras.models.load_model(save_model_folder+ENCODER_NAME)
             decoder=keras.models.load_model(save_model_folder+DECODER_NAME.format(0))
             inputs = encoder.inputs
@@ -74,7 +76,7 @@ def objective(trial,args):
 
             print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch),flush=True)
 
-        else:
+        except:
             y_vae_list=get_y_vae_list(args.latent_dim, input_shape, 1,use_residual=args.use_residual,use_bn=args.use_bn,use_gn=args.use_gn)
         print('time elapsed for making model = {}'.format(time.time()-model_start))
 
