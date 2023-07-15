@@ -76,7 +76,9 @@ def objective_unit(trial,args):
     print('mem pct',pct)
     time.sleep(5)
     gc.collect()
-    if args.load:
+    try:
+        if args.load==False:
+            raise Exception("set to not load")
         print("loading from saved model")
         shared_partial=tf.keras.models.load_model(save_model_folder+SHARED_ENCODER_NAME)
         decoders=[tf.keras.models.load_model(save_model_folder+DECODER_NAME.format(i)) for i in range(n_classes)]
@@ -88,7 +90,7 @@ def objective_unit(trial,args):
 
         print("successfully loaded from {} at epoch {}".format(save_model_folder, start_epoch))
 
-    else:
+    except:
         print("not loading from saved")
         encoder_start=time.time()
         print('encoder args',input_shape,args.latent_dim, args.use_residual)
